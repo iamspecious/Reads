@@ -6,9 +6,16 @@
 # All the logic is in scripts/sync_bluesky.py and scripts/import_bluesky.py.
 #
 # Why every 30 minutes: quick enough that a post shows up the same evening,
-# without asking Bluesky over and over. GitHub's timer can run a little late
-# when it's busy; that's normal. You can also press "Run workflow" on the
-# Actions tab to sync right now.
+# without asking Bluesky over and over. You can also press "Run workflow" on
+# the Actions tab to sync right now.
+#
+# Why at 17 and 47 minutes past the hour, and not on the hour:
+# Tripped me up: the first version used "*/30", which means :00 and :30.
+# Those are the busiest minutes on all of GitHub, because so many timed jobs
+# are set for them. GitHub's docs say that when it's busy, timed runs are
+# delayed and can be dropped entirely, and that's what happened: in the
+# first 4 hours not one timed run started. Odd minutes like :17 and :47
+# are quiet, so the runs actually happen.
 #
 # Note: GitHub pauses timed workflows on a repo that has had no activity for
 # 60 days. If that ever happens, the Actions tab shows a button to turn it
@@ -18,7 +25,7 @@ name: Sync Bluesky threads
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "17,47 * * * *"
   workflow_dispatch:
 
 # Write access to the repo's files, so it can commit new entries.
