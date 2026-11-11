@@ -5,68 +5,149 @@ description: Write a new reaction.
 permalink: /new/
 sitemap: false
 noindex: true
+csp: true
 ---
 {% comment %}
-  new/index.html — the "post from my phone" page.
+  new/index.html — the one-page "post from my phone" screen.
 
-  How it works: you fill in the form. The page writes the entry file for you
-  and opens GitHub's "create new file" screen with the name and text already
-  filled in. You tap "Commit changes" and you're done. GitHub Pages then
-  rebuilds the site in a minute or two.
+  The flow, one step at a time on the same page:
+    1. "What are you reading?" Tap the book. Books marked "reading" are big
+       buttons at the top, because that's almost always the answer.
+    2. Not there? "Something else" shows every other log, plus
+       "Start a new one", which asks for title, author/studio and type.
+    3. Write: chapter (filled in with the last chapter you logged), the text,
+       and Post. GitHub's "new file" screen opens with it all filled in, and
+       you tap "Commit changes". The site updates a minute or two later.
 
-  Why it's built this way: this site has no server and stores no passwords or
-  tokens. GitHub's own page does the saving, using the login you already have
-  in the GitHub app or browser. If someone else finds this page, it's useless
-  to them: they can't commit to your repo.
+  Why GitHub's screen does the saving: this page holds no keys or passwords
+  at all, on purpose. Saving uses the GitHub login you already have.
+  A stranger who finds this page can't post: GitHub won't let them commit.
+  (A version that saved straight from this page with a stored key was built
+  and then removed; the reasons are at the top of assets/js/new-entry.js.)
 
-  sitemap: false keeps this page out of search engines' list, and
-  noindex: true (read by head.html) asks them not to show it either.
+  sitemap: false and noindex: true keep this page out of search engines.
   It's a tool, not a page to read.
+
+  csp: true switches on a strict safety rule for the browser (written in
+  head.html, called a Content-Security-Policy). On this page, scripts may only
+  come from this site, and the page can't send data anywhere at all. So even
+  if something sneaky got onto the page, it couldn't send your drafts off.
 {% endcomment %}
-<h1>New entry</h1>
 
 {% comment %}
-  Logs you're still reading go first in the list, since that's almost always
-  what you're posting about. Finished and dropped ones follow.
+  Everything the page needs to know about the logs, handed to the JavaScript
+  as data. type="application/json" means the browser never runs it; the
+  script just reads it. That matters because the safety rule above blocks
+  scripts written inside the page.
+
+  For each log we also include the last chapter and a short bit of the last
+  entry, so the write step can say "Last time: Ch 17, 'Nesta is still…'"
+  and fill in the chapter for you.
 {% endcomment %}
-{% assign reading = site.logs | where: "status", "reading" | sort: "started" | reverse %}
-{% assign others = site.logs | where_exp: "l", "l.status != 'reading'" | sort: "title" %}
+{% comment %}
+  The data is built first, then every "</" becomes "<\/" (which means the same in JSON).
+  Why: a post containing "</script>" would otherwise end this block early and
+  break the page. Tripped me up: jsonify makes text safe for JSON, but not for
+  JSON sitting inside an HTML page. Those are two different rules.
+{% endcomment %}
+{%- capture reads_data -%}
+{
+  "repo": {{ site.repository | jsonify }},
+  "branch": {{ site.branch | jsonify }},
+  "baseurl": {{ site.baseurl | jsonify }},
+  "logs": [
+  {%- for l in site.logs -%}
+    {%- assign le = site.entries | where: "log", l.slug | sort: "date" -%}
+    {%- assign last = le | last -%}
+    {%- capture last_text -%}{% if last %}{% include entry-text.html entry=last %}{% endif %}{%- endcapture -%}
+    {%- assign last_ch = nil -%}
+    {%- for x in le reversed -%}{%- if x.chapter -%}{%- assign last_ch = x.chapter -%}{%- break -%}{%- endif -%}{%- endfor -%}
+    {"slug":{{ l.slug | jsonify }},"title":{{ l.title | jsonify }},"creator":{{ l.creator | jsonify }},"type":{{ l.type | jsonify }},"status":{{ l.status | jsonify }},"started":{{ l.started | date: "%Y-%m-%d" | jsonify }},"count":{{ le.size }},"lastChapter":{{ last_ch | jsonify }},"lastText":{{ last_text | truncate: 90 | jsonify }},"lastDate":{{ last.date | date: "%-d %b" | jsonify }}}{% unless forloop.last %},{% endunless %}
+  {%- endfor -%}
+  ]
+}
+{%- endcapture %}
+<script type="application/json" id="reads-data">{{ reads_data | replace: "</", "<\/" }}</script>
 
-<form id="new-entry" class="new-form"
-      data-repo="{{ site.repository }}" data-branch="{{ site.branch }}">
-  <label for="log">Log</label>
-  <select id="log" name="log" required>
-    {% for l in reading %}<option value="{{ l.slug }}">{{ l.title }}</option>{% endfor %}
-    {% if others.size > 0 %}
-      <optgroup label="Finished or dropped">
-        {% for l in others %}<option value="{{ l.slug }}">{{ l.title }}</option>{% endfor %}
-      </optgroup>
-    {% endif %}
-  </select>
+<h1>New entry</h1>
 
-  <label for="chapter">Chapter <span class="hint">(optional)</span></label>
-  {% comment %} inputmode="numeric" brings up the number keypad on phones, but still allows "Prologue". {% endcomment %}
-  <input id="chapter" name="chapter" type="text" inputmode="numeric" autocomplete="off" placeholder="12">
+<noscript><p class="empty">This page needs JavaScript to work.</p></noscript>
 
-  <label for="text">Reaction</label>
-  <textarea id="text" name="text" rows="8" required placeholder="What just happened?!"></textarea>
-  <p class="hint" id="char-count" aria-live="polite"></p>
+{% comment %} Step 1: pick the book. Filled in by the script. {% endcomment %}
+<section id="step-pick" class="step" hidden>
+  {% comment %} Shown for a day after a post is sent to GitHub, in case the Commit didn't happen. {% endcomment %}
+  <p class="hint last-sent" id="last-sent" hidden>
+    Sent a post to GitHub at <span id="last-sent-time"></span>. Didn't commit it?
+    <button type="button" class="link-button" id="restore-last">Bring it back</button>
+  </p>
+  <h2 class="step-q">What are you reading?</h2>
+  <div id="reading-list" class="pick-list"></div>
+  <button type="button" class="button button-quiet" id="show-others">Something else…</button>
+  <div id="others" hidden>
+    <h2 class="step-q">Pick another log</h2>
+    <div id="other-list" class="pick-list"></div>
+    <button type="button" class="button" id="start-new">＋ Start a new book, game or show</button>
+  </div>
+</section>
 
+{% comment %} Step 2 (only for something new): describe the new log. {% endcomment %}
+<section id="step-newlog" class="step" hidden>
+  <h2 class="step-q">Start a new log</h2>
+  <form id="newlog-form" class="new-form">
+    <label for="nl-title">Title</label>
+    <input id="nl-title" required autocomplete="off" placeholder="A Court of Thorns and Roses">
+    <label for="nl-creator">Author or studio</label>
+    <input id="nl-creator" required autocomplete="off" placeholder="Sarah J. Maas">
+    <label for="nl-type">Type</label>
+    <select id="nl-type">
+      <option value="book">Book</option>
+      <option value="game">Game</option>
+      <option value="show">Show</option>
+    </select>
+    <label for="nl-started">Started</label>
+    <input id="nl-started" type="date">
+    <label for="nl-tags">Tags <span class="hint">(optional, separated by commas)</span></label>
+    <input id="nl-tags" autocomplete="off" placeholder="fantasy, romance">
+    <p class="hint" id="nl-slug"></p>
+    <p class="hint">Next, GitHub opens with the new log filled in. Tap <strong>Commit changes</strong>, then come back here: the write screen will be ready for the first entry.</p>
+    <button type="submit" class="button">Save the new log on GitHub</button>
+    <button type="button" class="button button-quiet" data-back>← Back</button>
+  </form>
+</section>
+
+{% comment %} Step 3: write the entry. {% endcomment %}
+<section id="step-write" class="step" hidden>
+  <div class="chosen">
+    <p class="chosen-title" id="w-title"></p>
+    <p class="hint" id="w-last"></p>
+    <button type="button" class="link-button" data-back>Change</button>
+  </div>
+  <form id="entry-form" class="new-form">
+    <label for="chapter">Chapter <span class="hint">(optional)</span></label>
+    {% comment %} inputmode="numeric" brings up the number keypad on phones, but still allows "Prologue". {% endcomment %}
+    <input id="chapter" type="text" inputmode="numeric" autocomplete="off">
+
+    <label for="text">Reaction</label>
+    <textarea id="text" rows="8" required placeholder="What just happened?!"></textarea>
+    <p class="hint" id="char-count" aria-live="polite"></p>
+
+    {% comment %} "Now" by default, but changeable, for something jotted down earlier. {% endcomment %}
+    <details class="when">
+      <summary>Time: <span id="when-label">now</span></summary>
+      <input id="when" type="datetime-local" step="1">
+    </details>
+
+    <button type="submit" class="button" id="post-button">Post</button>
+    <p class="hint">Opens GitHub with your post filled in. Tap <strong>Commit changes</strong> there.</p>
+    <p class="status" id="post-status" role="status" aria-live="polite"></p>
+  </form>
   {% comment %}
-    The time is filled in with "now" but can be changed, for when you
-    jotted something down earlier and are only posting it later.
+    Marking a book finished means editing its log file. GitHub can't pre-fill
+    an edit, so this opens the file and the text says what to change.
   {% endcomment %}
-  <label for="when">When</label>
-  <input id="when" name="when" type="datetime-local" step="1">
-
-  <button type="submit" class="button">Open in GitHub to commit</button>
-  <button type="button" class="button button-quiet" id="clear-draft">Clear draft</button>
-  <p class="hint">Your draft is kept on this phone until you clear it, in case GitHub doesn't open.</p>
-</form>
-
-<details class="preview">
-  <summary>Preview the file</summary>
-  <pre id="preview"></pre>
-</details>
+  <p class="hint finish-link">
+    <a id="finish-log" href="#" rel="noopener" hidden>Finished this one? Open it on GitHub and change <code>status: reading</code> to <code>status: finished</code>, and fill in <code>finished:</code> with today's date.</a>
+  </p>
+</section>
 
 <script src="{{ '/assets/js/new-entry.js' | relative_url }}" defer></script>

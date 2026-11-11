@@ -67,10 +67,24 @@ MAX_DEPTH = 1000
 # It doesn't say who you are, on purpose.
 USER_AGENT = "reads-bluesky-importer/1.0 (+static site importer)"
 
-# Spots "Ch 12", "Ch. 12", "ch12", "Chapter 12", "Chapters 12-14", "Chap 3".
+# Spots "Ch 12", "Ch. 12", "ch12", "Chapter 12", "Chap 3", and ranges like
+# "Chapter 7 - 9", "Chapters 12-14", "Ch 7 to 9", "Ch 7–9".
 # \b means "start of a word", so "much 12" does NOT count as "ch 12".
-# Only the first number is kept: "Chapters 12-14" becomes 12.
-CHAPTER_RE = re.compile(r"\bch(?:apters?|aps?|pts?)?\.?\s*#?\s*(\d{1,4})\b", re.IGNORECASE)
+# A range is kept as a range ("7-9"), so the badge says what the post covers.
+# Tripped me up: at first only the first number was kept, so a post about
+# chapters 7 to 9 was labelled as just chapter 7.
+CHAPTER_RE = re.compile(
+    r"\bch(?:apters?|aps?|pts?)?\.?\s*#?\s*(\d{1,4})\b(?:\s*(?:-|–|—|to|through|thru)\s*(\d{1,4})\b)?",
+    re.IGNORECASE)
+
+# Jekyll treats "{{" and "{%" in a file as template code, which could break
+# the whole site build. Posts containing them get wrapped in "raw" markers,
+# which tell Jekyll to leave the text alone. The site strips the markers again
+# when it shows the text (_includes/entry-text.html), so readers see the post
+# exactly as written. The markers are built from pieces so this script's own
+# text never looks like one.
+RAW_OPEN, RAW_CLOSE = "{" + "% raw %" + "}", "{" + "% endraw %" + "}"
+ENDRAW_RE = re.compile(r"\{%-?\s*endraw")
 
 # Pulls the handle (or DID) and the post ID out of a bsky.app link.
 POST_URL_RE = re.compile(r"^https?://(?:www\.)?bsky\.app/profile/([^/]+)/post/([A-Za-z0-9]+)/?(?:[?#].*)?$")
@@ -252,9 +266,14 @@ def already_imported(entries_dir):
 # ─── Making one entry ──────────────────────────────────────────────────────
 
 def find_chapter(text):
-    """Return the chapter number mentioned in the text, or None."""
+    """Return the chapter mentioned in the text: 12, or "7-9" for a range, or None."""
     m = CHAPTER_RE.search(text)
-    return int(m.group(1)) if m else None
+    if not m:
+        return None
+    start, end = m.group(1), m.group(2)
+    if end and int(end) > int(start):
+        return f"{int(start)}-{int(end)}"
+    return int(start)
 
 
 def post_images(post):
@@ -290,7 +309,11 @@ def download_image(url, dest_stem):
         if existing.exists():
             return existing
     body, ctype = http_get(url, want_json=False)
-    ext = EXT_FOR_TYPE.get(ctype.split(";")[0].strip(), ".jpg")
+    # Only save real images. If the server sends back anything else (an error
+    # page, say), we stop rather than save it into the site as a ".jpg".
+    ext = EXT_FOR_TYPE.get(ctype.split(";")[0].strip().lower())
+    if not ext:
+        raise SystemExit(f"Expected an image but got '{ctype}' from {url}. Nothing was written for this post; run the import again later.")
     path = dest_stem.with_suffix(ext)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(body)
@@ -312,6 +335,11 @@ def write_entry(post, log_slug, handle, tz, repo, dry_run):
     record = post["record"]
     text = record.get("text", "")
     rkey = post["uri"].rsplit("/", 1)[-1]
+    # The post ID becomes part of file names. Bluesky's IDs are plain letters
+    # and numbers; anything else (like "../") is refused, so data from the
+    # internet can never make the script write outside its own folders.
+    if not re.fullmatch(r"[A-Za-z0-9]{1,64}", rkey):
+        raise SystemExit(f"Unexpected post ID {rkey!r}. Stopping without writing it.")
 
     # The original time the post was made. Bluesky stores it in UTC ("Z").
     # We turn it into site time, so a post made late at night shows the
@@ -326,10 +354,14 @@ def write_entry(post, log_slug, handle, tz, repo, dry_run):
     source_url = f"https://bsky.app/profile/{handle}/post/{rkey}"
     chapter = find_chapter(text)
 
-    # Liquid (Jekyll's template language) reads "{{" and "{%" as commands,
-    # even inside .txt files. We don't change your words, so we just warn.
-    if "{{" in text or "{%" in text:
-        print(f"  Warning: post {rkey} contains '{{{{' or '{{%'. Jekyll may treat it as template code. Check that entry after the build.")
+    # The words are never changed. A post with "{{" or "{%" is only wrapped
+    # in raw markers (see RAW_OPEN above) so it can't break the build.
+    # The one thing the wrapper can't hold is the word that ends it, so a post
+    # containing it is skipped and reported, instead of breaking the site.
+    if ENDRAW_RE.search(text):
+        print(f"  Skipped post {rkey}: it contains the text '{{% endraw', which would break the site build. Add it by hand without that part.")
+        return None
+    body = f"{RAW_OPEN}{text}{RAW_CLOSE}" if ("{{" in text or "{%" in text) else text
 
     images = []
     for i, (url, alt) in enumerate(post_images(post), start=1):
@@ -346,7 +378,7 @@ def write_entry(post, log_slug, handle, tz, repo, dry_run):
         "---",
         f"date: {created:%Y-%m-%d %H:%M:%S %z}",
         f"log: {log_slug}",
-        f"chapter: {chapter if chapter is not None else ''}".rstrip(),
+        f"chapter: {'' if chapter is None else yaml_str(chapter) if isinstance(chapter, str) else chapter}".rstrip(),
         f"source_url: {source_url}",
     ]
     if images:
@@ -355,9 +387,10 @@ def write_entry(post, log_slug, handle, tz, repo, dry_run):
             lines.append(f"  - src: {yaml_str(src)}")
             lines.append(f"    alt: {yaml_str(alt)}")
     lines.append("---")
-    # The text goes in exactly as posted. One newline is added at the very
-    # end because files should end with one; the site trims it when showing.
-    content = "\n".join(lines) + "\n" + text + "\n"
+    # The text goes in exactly as posted (only raw-wrapped when needed, see
+    # above). One newline is added at the very end because files should end
+    # with one; the site trims it when showing.
+    content = "\n".join(lines) + "\n" + body + "\n"
 
     path = repo / "_entries" / f"{stem}.txt"
     if not dry_run:
@@ -412,7 +445,9 @@ def main(argv=None):
         if post["uri"].rsplit("/", 1)[-1] in done:
             skipped += 1
             continue
-        written.append(write_entry(post, args.log_slug, handle, tz, repo, args.dry_run))
+        result = write_entry(post, args.log_slug, handle, tz, repo, args.dry_run)
+        if result:
+            written.append(result)
 
     report(posts, written, skipped, args)
     return 0

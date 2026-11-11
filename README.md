@@ -13,12 +13,29 @@ It's a plain Jekyll site built by GitHub Pages. No server, no paid services, no 
 
 ## Post from your phone
 
-1. Open **https://iamspecious.github.io/reads/new/** (add it to your home screen).
-2. Pick the log, type the chapter if you like, write your reaction.
-3. Tap **Open in GitHub to commit**. GitHub opens with the file already filled in.
-4. Tap **Commit changes**. The site updates in a minute or two.
+Open **https://iamspecious.github.io/reads/new/** (add it to your home screen). It's one page:
 
-You need to be logged in to GitHub in that browser (or the GitHub app). Your draft stays on the phone until you tap *Clear draft*, in case GitHub doesn't open.
+1. **What are you reading?** Tap the book. Books marked `reading` are at the top.
+2. Not there? Tap **Something else…** and pick another log, or **Start a new book, game or show**.
+3. Write your reaction. The chapter is filled in with the last one you logged.
+4. Tap **Post**. GitHub opens with the file filled in. Tap **Commit changes**. It's on the site a minute or two later.
+
+You need to be signed in to GitHub in that browser or the GitHub app.
+
+- **New book:** fill in the title, author and type, and tap *Save the new log on GitHub*. Tap **Commit changes**, then come back to `/new`. The write screen is ready for the first entry. That's two quick Commits, only when you start something new.
+- **Finished a book?** On the write screen, the *Finished this one?* link opens the book's file on GitHub. Change `status: reading` to `status: finished`, fill in `finished:` with the date, and commit.
+- **Lost a post?** If GitHub didn't save it (lost signal, tapped away), `/new` shows *Didn't commit it? Bring it back* for a day after you post.
+
+The page stores no keys or passwords. Saving always happens on GitHub, with your own login.
+
+## Security, in short
+
+- **Only you can change the site.** You're the only person with write access to the repo. Anyone else who taps Post just gets GitHub's "fork this repository" screen, and their changes go nowhere unless you merge them.
+- **No keys or passwords anywhere on the site.** Posting always goes through GitHub's own screen, with your own login and two-factor sign-in.
+- **`/new` has a strict browser safety rule:** only this site's own scripts can run there, and the page can't send data anywhere by itself.
+- **Every change is in the git history** and can be undone.
+- **Every push is checked.** The *Check* action tests the importer and validates every log and entry file. A red X on the Actions tab means a file needs fixing, and it says which one.
+- **Keep two-factor sign-in on** for your GitHub account. Your account is the only key to the site.
 
 ## Import a Bluesky thread
 
@@ -34,7 +51,7 @@ The script is `scripts/import_bluesky.py` (Python, no extra packages). Its tests
 
 ## Start a new log
 
-Add a file to `_logs/`. The file name becomes the slug and the web address (`/reads/logs/<slug>/`). You can do this on github.com: open `_logs`, tap **Add file → Create new file**, name it e.g. `hades-ii.md`, and paste:
+The easy way is **Start a new book** on `/new`. To do it by hand, add a file to `_logs/`. The file name becomes the slug and the web address (`/reads/logs/<slug>/`). You can do this on github.com: open `_logs`, tap **Add file → Create new file**, name it e.g. `hades-ii.md`, and paste:
 
 ```yaml
 ---

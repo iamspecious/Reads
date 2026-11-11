@@ -127,7 +127,11 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(imp.find_chapter("Ch 12 is wild"), 12)
         self.assertEqual(imp.find_chapter("ch.7"), 7)
         self.assertEqual(imp.find_chapter("CHAPTER 30!!"), 30)
-        self.assertEqual(imp.find_chapter("Chapters 12-14"), 12)
+        self.assertEqual(imp.find_chapter("Chapters 12-14"), "12-14")
+        self.assertEqual(imp.find_chapter("Chapter 7 - 9 : interesting"), "7-9")
+        self.assertEqual(imp.find_chapter("ch 7 to 9"), "7-9")
+        self.assertEqual(imp.find_chapter("Chapter 7 – 9"), "7-9")
+        self.assertEqual(imp.find_chapter("Chapter 12 - 3 favourite lines"), 12)
         self.assertIsNone(imp.find_chapter("much 12 nothing"))
         self.assertIsNone(imp.find_chapter("no chapter number here"))
 
@@ -147,6 +151,22 @@ class ImportTests(unittest.TestCase):
         # No comments in generated files.
         for text in by_rkey.values():
             self.assertNotIn("#", text.split("---")[1])
+
+    def test_template_code_is_wrapped_and_endraw_is_skipped(self):
+        # Post 9 contains "{{", post 10 contains the one thing we can't wrap.
+        self.chain[9]["record"]["text"] = "Feyre {{ is }} here {% wow"
+        self.chain[10]["record"]["text"] = "sneaky {% endraw %} text"
+        self.run_import()
+        by_rkey = {f.stem.rsplit("-", 1)[-1]: f.read_text() for f in self.entries()}
+        self.assertTrue(by_rkey["rk009"].endswith("---\n" + imp.RAW_OPEN + "Feyre {{ is }} here {% wow" + imp.RAW_CLOSE + "\n"))
+        self.assertNotIn("rk010", by_rkey)
+        self.assertEqual(len(by_rkey), 14)
+
+    def test_range_is_written_quoted(self):
+        self.chain[4]["record"]["text"] = "Chapter 7 - 9 : wow"
+        self.run_import()
+        f = next(f for f in self.entries() if f.stem.endswith("rk004"))
+        self.assertIn('chapter: "7-9"\n', f.read_text())
 
     def test_unknown_log_is_refused(self):
         with self.assertRaises(SystemExit):

@@ -7,6 +7,15 @@
   No web fonts either: the phone's own font shows up instantly and costs nothing.
 {% endcomment %}
 <meta charset="utf-8">
+{% comment %}
+  The strict safety rule for the posting page (only /new sets csp: true).
+  It must come first in <head>, before anything it's meant to guard.
+    script-src 'self'          scripts only from this site, none written inside the page
+    connect-src 'none'         the page can't send data anywhere by itself
+    form-action 'none'         forms can't be sent anywhere by the browser itself
+    base-uri 'none'            nobody can quietly change where relative links point
+{% endcomment %}
+{% if page.csp %}<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">{% endif %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 {% comment %} Pages that are tools, not reading (like /new), set noindex: true to stay out of search results. {% endcomment %}
 {% if page.noindex %}<meta name="robots" content="noindex">{% endif %}
@@ -18,7 +27,7 @@
   chapter-by-chapter reactions" for us, and GitHub Pages won't run custom
   plugins that could. So for log pages we write those tags right here.
 
-  Tripped me up: first I used {% seo title=false %} on log pages and only
+  Tripped me up: first I used the seo tag with title=false on log pages and only
   added my own <title> and description. But jekyll-seo-tag still printed a
   SECOND description (the site's generic one) and called the page a
   "BlogPosting" dated the day of the build. Two descriptions confuse search
@@ -47,7 +56,9 @@
     This block tells search engines, in their own format (JSON-LD),
     that the page is about a particular book, game or show and who made it.
   {% endcomment %}
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":{{ seo_title | jsonify }},"description":{{ seo_desc | jsonify }},"url":{{ page.url | absolute_url | jsonify }},"about":{"@type":{{ schema_type | jsonify }},"name":{{ page.title | jsonify }},"author":{"@type":"Person","name":{{ page.creator | jsonify }}}}}</script>
+  {% comment %} "</" becomes "<\/" so a title can never end this <script> block early (same rule as on /new). {% endcomment %}
+  {%- capture ld -%}{"@context":"https://schema.org","@type":"WebPage","name":{{ seo_title | jsonify }},"description":{{ seo_desc | jsonify }},"url":{{ page.url | absolute_url | jsonify }},"about":{"@type":{{ schema_type | jsonify }},"name":{{ page.title | jsonify }},"author":{"@type":"Person","name":{{ page.creator | jsonify }}}}}{%- endcapture %}
+  <script type="application/ld+json">{{ ld | replace: "</", "<\/" }}</script>
 {% else %}
   {% seo %}
 {% endif %}

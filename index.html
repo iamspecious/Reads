@@ -11,6 +11,27 @@ layout: default
 {% assign latest = site.entries | sort: "date" | reverse %}
 
 <h1 class="visually-hidden">Latest entries</h1>
+
+{% comment %}
+  "Currently reading": every log marked status: reading, newest first,
+  with how far along you are. It sits above the feed so the home page
+  answers "what's on the go right now?" at a glance.
+  Only shown when there's at least one. Design is a first pass, to revisit.
+{% endcomment %}
+{% assign now_reading = site.logs | where: "status", "reading" | sort: "started" | reverse %}
+{% if now_reading.size > 0 %}
+<section class="now-reading" aria-labelledby="now-h">
+  <h2 id="now-h">Currently {% if now_reading.size == 1 and now_reading.first.type == "game" %}playing{% else %}reading{% endif %}</h2>
+  <ul class="now-list">
+    {% for l in now_reading %}
+      {% assign le = site.entries | where: "log", l.slug | sort: "date" %}
+      {% assign last_ch = nil %}
+      {% for x in le reversed %}{% if x.chapter %}{% assign last_ch = x.chapter %}{% break %}{% endif %}{% endfor %}
+      <li><a href="{{ l.url | relative_url }}"><strong>{{ l.title }}</strong><span>{{ l.creator }}{% if last_ch %} · up to Ch {{ last_ch }}{% endif %} · {{ le.size }} {% if le.size == 1 %}entry{% else %}entries{% endif %}</span></a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
 <section class="feed" aria-label="Latest entries, newest first">
   {% for entry in latest limit: 50 %}
     {% include entry-card.html entry=entry show_log=true %}

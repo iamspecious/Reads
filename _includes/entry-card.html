@@ -54,7 +54,8 @@
     We do NOT run it through Markdown: on Bluesky, "#ACOSF" is a hashtag,
     but Markdown would turn it into a giant heading.
   {% endcomment %}
-  <div class="entry-text">{{ e.content | strip | escape | newline_to_br }}</div>
+  {% capture text %}{% include entry-text.html entry=e %}{% endcapture %}
+  <div class="entry-text">{{ text | escape | newline_to_br }}</div>
 
   {% if e.images %}
     <div class="entry-images">
