@@ -41,7 +41,7 @@
   {% endcase %}
   {% assign log_entries = site.entries | where: "log", page.slug %}
   {% capture seo_title %}{{ page.title }} — {{ style }}{% endcapture %}
-  {% capture seo_desc %}{{ page.title }} by {{ page.creator }}: {{ style }}, written live while {{ doing }}. {{ log_entries.size }} {% if log_entries.size == 1 %}entry{% else %}entries{% endif %} so far, {{ page.status }}.{% endcapture %}
+  {% capture seo_desc %}{{ page.title }} by {{ page.creator }}: {{ style }}. {{ log_entries.size }} {% if log_entries.size == 1 %}entry{% else %}entries{% endif %}.{% endcapture %}
   <title>{{ seo_title | escape }} | {{ site.title }}</title>
   <meta name="description" content="{{ seo_desc | escape }}">
   <link rel="canonical" href="{{ page.url | absolute_url }}">
@@ -64,4 +64,18 @@
 {% endif %}
 {% comment %} feed_meta comes from jekyll-feed. It adds the <link> that lets feed readers find feed.xml. {% endcomment %}
 {% feed_meta %}
+{% comment %}
+  The logo font is loaded early ("preload") so the name in the header doesn't
+  flash in a different font first. It's stored in this repo, not fetched from
+  Google, so visiting the site never contacts anyone else.
+  crossorigin is required for font preloads, even from our own site;
+  without it the browser downloads the font twice.
+{% endcomment %}
+<link rel="preload" href="{{ '/assets/fonts/bebas-neue-latin.woff2' | relative_url }}" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{{ '/assets/css/reads.css' | relative_url }}">
+{% comment %} The logo as the browser-tab icon and the phone home-screen icon. {% endcomment %}
+<link rel="icon" type="image/png" href="{{ '/favicon.png' | relative_url }}">
+<link rel="apple-touch-icon" href="{{ '/apple-touch-icon.png' | relative_url }}">
+{% comment %} Colours the phone's browser bar to match the page, light or dark. {% endcomment %}
+<meta name="theme-color" content="#fbfafc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131218" media="(prefers-color-scheme: dark)">

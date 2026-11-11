@@ -1,7 +1,7 @@
 ---
 layout: default
-title: All logs
-description: Every book, game and show with a live log, filterable by type and status.
+title: Logs
+description: Every book, game and show on Books by Spec.
 permalink: /logs/
 ---
 {% comment %}
@@ -17,7 +17,7 @@ permalink: /logs/
 {% endcomment %}
 {% assign logs = site.logs | sort: "started" | reverse %}
 
-<h1>All logs</h1>
+<h1 class="page-title">Logs</h1>
 
 <form class="filters" id="log-filters" hidden aria-label="Filter logs">
   <fieldset>
@@ -45,10 +45,10 @@ permalink: /logs/
       <a class="log-card-title" href="{{ log.url | relative_url }}">{{ log.title }}</a>
       <span class="log-card-creator">{{ log.creator }}</span>
       <span class="log-card-meta">
-        <span class="badge badge-type">{{ log.type }}</span>
-        <span class="badge badge-status status-{{ log.status }}">{{ log.status }}</span>
-        {{ n }} {% if n == 1 %}entry{% else %}entries{% endif %}
-        {% if log.started %}· since {{ log.started | date: "%b %Y" }}{% endif %}
+        <span class="status status-{{ log.status }}">{{ log.status | capitalize }}</span>
+        <span>{{ log.type | capitalize }}</span>
+        <span>{{ n }} {% if n == 1 %}entry{% else %}entries{% endif %}</span>
+        {% if log.started %}<span>Since {{ log.started | date: "%b %Y" }}</span>{% endif %}
       </span>
     </li>
   {% endfor %}

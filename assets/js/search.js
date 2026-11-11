@@ -80,7 +80,7 @@
     var html = '';
     logs.forEach(function (l) {
       html += '<a class="result result-log" href="' + esc(l.u) + '">' +
-        '<span class="badge badge-type">' + esc(l.y) + '</span> ' +
+        '<span class="chip chip-quiet">' + esc(l.y) + '</span> ' +
         '<strong>' + highlight(l.g, words) + '</strong> <span class="result-sub">' + highlight(l.a, words) + ' · ' + esc(l.s) + '</span></a>';
     });
     entries.slice(0, 100).forEach(function (e) {

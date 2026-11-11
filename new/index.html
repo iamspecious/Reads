@@ -1,7 +1,7 @@
 ---
 layout: default
 title: New entry
-description: Write a new reaction.
+description: Post a new entry.
 permalink: /new/
 sitemap: false
 noindex: true
@@ -69,7 +69,7 @@ csp: true
 {%- endcapture %}
 <script type="application/json" id="reads-data">{{ reads_data | replace: "</", "<\/" }}</script>
 
-<h1>New entry</h1>
+<h1 class="page-title">New entry</h1>
 
 <noscript><p class="empty">This page needs JavaScript to work.</p></noscript>
 
@@ -128,7 +128,7 @@ csp: true
     <input id="chapter" type="text" inputmode="numeric" autocomplete="off">
 
     <label for="text">Reaction</label>
-    <textarea id="text" rows="8" required placeholder="What just happened?!"></textarea>
+    <textarea id="text" rows="8" required></textarea>
     <p class="hint" id="char-count" aria-live="polite"></p>
 
     {% comment %} "Now" by default, but changeable, for something jotted down earlier. {% endcomment %}
@@ -139,7 +139,7 @@ csp: true
 
     <button type="submit" class="button" id="post-button">Post</button>
     <p class="hint">Opens GitHub with your post filled in. Tap <strong>Commit changes</strong> there.</p>
-    <p class="status" id="post-status" role="status" aria-live="polite"></p>
+    <p id="post-status" role="status" aria-live="polite"></p>
   </form>
   {% comment %}
     Marking a book finished means editing its log file. GitHub can't pre-fill

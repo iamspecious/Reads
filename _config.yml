@@ -2,9 +2,12 @@
 # Jekyll is the tool GitHub Pages uses to turn these files into web pages.
 
 # The name and blurb show up in the header, in search engines, and in the feed.
-title: Reads
-description: Live reading and playing logs. Short reactions, chapter by chapter, as they happen.
-author: Specious Coda Bishop
+# The description is only used behind the scenes (search engines, link
+# previews, the feed). It's kept short and plain on purpose; replace it with
+# your own words any time.
+title: Books by Spec
+description: Chapter-by-chapter reading logs by Spec.
+author: Spec
 
 # The site lives at iamspecious.github.io/reads, not at the root of the domain.
 # "url" is the domain. "baseurl" is the folder after it.
@@ -18,6 +21,9 @@ baseurl: /reads
 # and by the footer to link to the source.
 repository: iamspecious/reads
 branch: main
+
+# Your Bluesky handle, for the footer link.
+bluesky: booksbyspec.bsky.social
 
 # Times are shown in this time zone. The Bluesky importer also reads this
 # line, so a post made at 23:30 in Berlin lands on the right day.

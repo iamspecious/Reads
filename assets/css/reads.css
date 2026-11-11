@@ -1,34 +1,72 @@
-/* reads.css — the whole look of the site in one small file.
+/* reads.css — the whole look of Books by Spec in one small file.
 
-   Why it looks like this: it borrows from the portfolio
-   (iamspecious.github.io/portfolio) so the two feel related:
-   - the dark header bar (#343a40) on a light grey page (#f8f9fa)
-   - the "devlog" cards: deep navy (#1a1a2e), gold timestamps (#c9a84c),
-     purple badges (#a07fd4), monospace labels
-   The portfolio loads a Bootstrap file for its grid. This site doesn't need
-   a grid, just one column, so we skip it and save the download.
+   The idea: a clean, quiet page where the writing is the main thing.
+   - White (or near-black in dark mode), lots of space, one column.
+   - The logo's tall lettering (Bebas Neue) for the site name and small labels.
+   - The logo's pink → violet → teal gradient, used sparingly as an accent:
+     the thin strip at the very top and the edge of the "Currently reading" box.
+   - Everything else is the phone's own font, so text appears instantly
+     and reads the way the phone's other apps do.
+   It's meant to look clearly different from the portfolio (dark grey header,
+   navy monospace cards), because this is a different kind of place.
 
-   Mobile first: the base styles are for a phone. The one @media rule near
-   the bottom adds a bit more room on wider screens. Doing it this way round
-   means phones never download or work through desktop-only rules first.
+   Mobile first: the base styles are for a phone. The one @media rule for
+   wider screens near the bottom only adds a bit of room.
+
+   Colours are written once as "variables" (the --names below) and reused.
+   Dark mode just swaps the variables, so every rule works in both.
 */
 
-/* Colour names ("variables") so each colour is set once and reused. */
+/* The logo font, stored in this repo (see assets/fonts/OFL.txt for its free licence).
+   font-display: swap shows the text in a normal font for the split second
+   before this one loads, instead of showing nothing. */
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("../fonts/bebas-neue-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --page: #f8f9fa;
-  --ink: #2d2d3a;
-  --muted: #6c6c80;
-  --header: #343a40;
-  --card: #1a1a2e;
-  --card-edge: #2a2a4a;
-  --card-head: #16213e;
-  --card-ink: #d8d8ea;
-  --card-muted: #8b8bb0;
-  --gold: #c9a84c;
-  --purple: #a07fd4;
-  --purple-deep: #7b5ea7;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --bg: #fbfafc;
+  --surface: #ffffff;
+  --ink: #1d1b22;
+  --ink-soft: #3b3843;
+  --muted: #6e6a78;
+  --line: #ebe8f0;
+  --accent: #7b45c4;          /* a deeper version of the logo's violet, dark enough to read as link text */
+  --chip-bg: #f2ecfb;
+  --chip-ink: #5e3399;
+  --quiet-bg: #f1f0f4;
+  --gradient: linear-gradient(90deg, #e06a95, #a463d6 50%, #3fa9c4);
+  --shadow: 0 1px 2px rgba(29, 27, 34, 0.04), 0 2px 8px rgba(29, 27, 34, 0.04);
+  --reading: #1f7a52;  --reading-bg: #e6f4ed;
+  --finished: #2b5ea8; --finished-bg: #e7eefa;
+  --dropped: #9a3b3b;  --dropped-bg: #f8e9e9;
+  --display: "Bebas Neue", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  color-scheme: light dark;   /* lets the browser draw form controls to match */
+}
+
+/* Dark mode follows the phone's own setting. Only the colours change. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131218;
+    --surface: #1b1a21;
+    --ink: #ecebf2;
+    --ink-soft: #d4d2dc;
+    --muted: #a19eae;
+    --line: #2a2832;
+    --accent: #c39af0;
+    --chip-bg: #2b2340;
+    --chip-ink: #d6bdf7;
+    --quiet-bg: #25242c;
+    --shadow: none;
+    --reading: #7fd3a8;  --reading-bg: #1d3329;
+    --finished: #9dbcf0; --finished-bg: #1e2a40;
+    --dropped: #eaa0a0;  --dropped-bg: #3a2222;
+  }
 }
 
 /* box-sizing: border-box means padding counts inside a box's width,
@@ -43,18 +81,18 @@
 
 body {
   margin: 0;
-  background: var(--page);
+  background: var(--bg);
   color: var(--ink);
-  font: 16px/1.55 var(--sans);
+  font: 17px/1.6 var(--sans);
   /* Stops iPhones from bumping up text size on their own when turned sideways. */
   -webkit-text-size-adjust: 100%;
 }
 
-a { color: var(--purple-deep); }
+a { color: var(--accent); text-underline-offset: 2px; }
 
-/* One centred column, never wider than comfy reading width.
-   16px of space on each side so text never touches the phone's edge. */
-.wrap { max-width: 680px; margin: 0 auto; padding: 0 16px; }
+/* One centred column at a comfortable reading width.
+   16px of space each side so text never touches the phone's edge. */
+.wrap { max-width: 640px; margin: 0 auto; padding: 0 16px; }
 
 /* Hidden on screen but still read out by screen readers. */
 .visually-hidden {
@@ -62,178 +100,193 @@ a { color: var(--purple-deep); }
   clip: rect(0 0 0 0); white-space: nowrap;
 }
 
+/* Small all-caps labels ("CURRENTLY READING", "LATEST") in the logo font. */
+.label {
+  margin: 28px 0 10px;
+  font: 400 1.15rem/1 var(--display);
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.page-title { font-size: 1.8rem; line-height: 1.2; margin: 24px 0 14px; letter-spacing: -0.01em; }
+
 /* ── Header ── */
-.site-header { background: var(--header); color: #fff; padding: 18px 0 12px; }
-.site-title { color: #fff; font-size: 1.5rem; font-weight: 700; text-decoration: none; }
-.site-tagline { margin: 2px 0 10px; color: #ced4da; font-size: 0.85rem; }
-/* flex-wrap lets the links drop to a second line on tiny screens instead of overflowing. */
-.site-nav { display: flex; flex-wrap: wrap; gap: 4px 16px; font-family: var(--mono); font-size: 0.82rem; }
-.site-nav a { color: #e6e6f0; text-decoration: none; padding: 6px 0; }
-.site-nav a[aria-current="page"] { color: var(--gold); }
+.brand-strip { height: 4px; background: var(--gradient); }
+.site-header { background: var(--surface); border-bottom: 1px solid var(--line); }
+/* Logo and name on the left, links on the right. On a narrow phone the
+   links simply drop onto their own line underneath (flex-wrap). */
+.header-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; padding-top: 12px; padding-bottom: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+.brand-logo { width: 44px; height: 44px; border-radius: 10px; display: block; }
+.brand-name { font: 400 1.9rem/1 var(--display); letter-spacing: 0.04em; padding-top: 4px; }
+.site-nav { display: flex; gap: 18px; font-size: 0.95rem; }
+/* Links are at least 40px tall so they're easy to tap. */
+.site-nav a { color: var(--muted); text-decoration: none; padding: 9px 0; border-bottom: 2px solid transparent; }
+.site-nav a:hover { color: var(--ink); }
+.site-nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
 
-/* "main.wrap", not just "main": .wrap sets padding on all four sides, and a
-   class beats a plain tag name. Tripped me up: with only "main" here, the
-   top and bottom space silently disappeared. */
-main.wrap { padding-top: 20px; padding-bottom: 32px; }
-h1 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 12px; }
+main { padding-bottom: 40px; }
 
-/* ── Entry cards (the portfolio's devlog look) ── */
+/* ── Currently reading box ── */
+.now-box {
+  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 4px 16px 6px;
+  /* The logo gradient as a thin bar along the top edge of the box. */
+  background-image: var(--gradient);
+  background-size: 100% 3px;
+  background-repeat: no-repeat;
+}
+.now-box .label { margin: 14px 0 4px; }
+.now-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 0 12px; text-decoration: none; color: var(--ink); }
+.now-item + .now-item { border-top: 1px solid var(--line); }
+.now-title { font-size: 1.25rem; font-weight: 700; line-height: 1.3; }
+.now-creator { color: var(--muted); font-size: 0.95rem; }
+.now-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 6px; font-size: 0.85rem; color: var(--muted); }
+
+/* ── Entry cards ── */
 .feed { display: flex; flex-direction: column; gap: 12px; }
 .entry {
-  background: var(--card);
-  border: 1px solid var(--card-edge);
-  border-radius: 8px;
-  padding: 12px 14px 12px;
-  color: var(--card-ink);
-  /* When you open a shared #link, leave room above the card so it isn't
-     jammed against the top of the screen. */
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 14px 16px 16px;
+  /* When you open a shared #link, leave room above the card. */
   scroll-margin-top: 16px;
 }
 /* :target is the card whose #anchor is in the address bar.
-   A gold outline shows "this is the one that was shared with you". */
-.entry:target { outline: 2px solid var(--gold); outline-offset: 2px; }
+   A violet outline shows "this is the one that was shared with you". */
+.entry:target { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.entry-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; font-family: var(--mono); }
-.entry-time { color: var(--gold); font-size: 0.74rem; text-decoration: none; margin-right: 4px; }
+.entry-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 8px; font-size: 0.82rem; }
+.entry-time { color: var(--muted); text-decoration: none; font-variant-numeric: tabular-nums; }
 .entry-time:hover { text-decoration: underline; }
-/* Long words and links in posts are allowed to wrap, so they can't push the card wider than the phone. */
-.entry-text { font-size: 0.98rem; overflow-wrap: anywhere; }
-.entry-images { display: grid; gap: 6px; margin-top: 10px; }
-.entry-images img { width: 100%; height: auto; border-radius: 6px; display: block; background: var(--card-head); }
-.entry-source { display: inline-block; margin-top: 8px; font-family: var(--mono); font-size: 0.7rem; color: var(--card-muted); }
+.entry-log { color: var(--accent); font-weight: 600; text-decoration: none; }
+.entry-log:hover { text-decoration: underline; }
+/* Long words and links are allowed to wrap, so they can't push the card wider than the phone. */
+.entry-text { color: var(--ink-soft); overflow-wrap: anywhere; }
+.entry-images { display: grid; gap: 8px; margin-top: 12px; }
+.entry-images img { width: 100%; height: auto; border-radius: 10px; display: block; background: var(--quiet-bg); }
+.entry-source { display: inline-block; margin-top: 10px; font-size: 0.8rem; color: var(--muted); text-decoration: none; }
+.entry-source:hover { text-decoration: underline; }
 
-/* ── Badges ── */
-.badge {
+/* ── Small pills ── */
+.chip {
   display: inline-block;
-  padding: 1px 7px;
-  border-radius: 3px;
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  text-decoration: none;
-  vertical-align: middle;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--chip-ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
 }
-/* Colours copied from the portfolio's devlog tags. */
-.badge-log { background: #2a1a3a; color: var(--purple); }
-.badge-chapter { background: #1a2a3a; color: #5b9bd5; }
-.badge-type, .badge-tag { background: #e9e4f3; color: var(--purple-deep); }
-.badge-status { background: #e9ecef; color: #495057; }
-.status-reading { background: #e3f1e8; color: #1c5230; }
-.status-finished { background: #e6eefb; color: #24467a; }
-.status-dropped { background: #f6e7e7; color: #7a2424; }
+.chip-quiet { background: var(--quiet-bg); color: var(--muted); font-weight: 500; }
+.status { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; line-height: 1.6; }
+.status-reading { background: var(--reading-bg); color: var(--reading); }
+.status-finished { background: var(--finished-bg); color: var(--finished); }
+.status-dropped { background: var(--dropped-bg); color: var(--dropped); }
 
 /* ── Log page header ── */
-.log-head { margin-bottom: 20px; }
-.log-type { margin: 0; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.log-head h1 { margin: 2px 0 2px; }
-.log-creator { margin: 0 0 10px; color: var(--muted); }
-.log-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 8px; font-size: 0.85rem; }
+.log-head { padding: 8px 0 20px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+.log-head .label { margin-top: 24px; margin-bottom: 6px; }
+.log-head h1 { margin: 0; font-size: 2rem; line-height: 1.15; letter-spacing: -0.015em; }
+.log-creator { margin: 4px 0 14px; color: var(--muted); font-size: 1.05rem; }
+.log-facts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0; font-size: 0.88rem; }
 .log-facts div { display: flex; gap: 6px; align-items: center; }
 .log-facts dt { color: var(--muted); }
-.log-facts dd { margin: 0; }
-.log-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 0; }
-.log-note { font-size: 0.95rem; }
+.log-facts dd { margin: 0; font-weight: 600; }
+.log-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+.log-note { margin-top: 12px; color: var(--ink-soft); }
 
-/* ── Logs index ── */
-.filters { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 8px; }
+/* ── Logs list ── */
+.filters { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-bottom: 10px; }
 .filters fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.filters legend { float: left; margin-right: 6px; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
-/* The radio circles are hidden. The label itself becomes a tappable pill,
-   at least 32px tall so it's easy to hit with a thumb. */
-.filters label { position: relative; }
+.filters legend { float: left; margin-right: 4px; font-size: 0.8rem; color: var(--muted); }
+/* The radio circles are hidden. Each label becomes a tappable pill,
+   at least 34px tall so it's easy to hit with a thumb. */
+.filters label { position: relative; display: inline-block; padding: 5px 13px; border: 1px solid var(--line); border-radius: 999px; font-size: 0.85rem; cursor: pointer; background: var(--surface); color: var(--ink-soft); }
 .filters input { position: absolute; opacity: 0; }
-.filters label { display: inline-block; padding: 5px 12px; border: 1px solid #d0cde0; border-radius: 16px; font-size: 0.82rem; cursor: pointer; background: #fff; }
-.filters label:has(input:checked) { background: var(--purple-deep); border-color: var(--purple-deep); color: #fff; }
-.filters label:has(input:focus-visible) { outline: 2px solid var(--purple); outline-offset: 2px; }
-.filter-count { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); margin: 0 0 10px; }
+.filters label:has(input:checked) { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.filters label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.filter-count { font-size: 0.82rem; color: var(--muted); margin: 0 0 12px; }
 
 .log-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
-.log-card { background: #fff; border: 1px solid #e3e0ee; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
-.log-card-title { font-weight: 700; font-size: 1.05rem; text-decoration: none; color: var(--ink); }
-.log-card-creator { color: var(--muted); font-size: 0.88rem; }
-.log-card-meta { font-size: 0.8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+.log-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.log-card-title { font-weight: 700; font-size: 1.1rem; text-decoration: none; color: var(--ink); }
+.log-card-title:hover { color: var(--accent); }
+.log-card-creator { color: var(--muted); font-size: 0.92rem; }
+.log-card-meta { font-size: 0.82rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin-top: 6px; }
 
-/* ── Search ── */
+/* ── Forms (search and /new) ── */
 .search-form input,
 .new-form input, .new-form select, .new-form textarea {
   width: 100%;
-  /* 16px font on inputs stops iPhones from zooming in when you tap them. */
-  font: 16px/1.4 var(--sans);
-  padding: 10px 12px;
-  border: 1px solid #cfcbe0;
-  border-radius: 8px;
-  background: #fff;
+  /* 16px or bigger on inputs stops iPhones from zooming in when you tap them. */
+  font: 17px/1.45 var(--sans);
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
   color: var(--ink);
 }
 .search-form input:focus, .new-form :is(input, select, textarea):focus {
-  outline: none; border-color: var(--purple-deep); box-shadow: 0 0 0 3px rgba(110, 64, 201, 0.2);
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .search-form { margin-bottom: 10px; }
-.search-results { display: flex; flex-direction: column; gap: 8px; }
-.result { display: block; background: #fff; border: 1px solid #e3e0ee; border-radius: 8px; padding: 10px 12px; text-decoration: none; color: var(--ink); }
-.result-sub { display: block; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); margin-bottom: 4px; }
+.search-results { display: flex; flex-direction: column; gap: 10px; }
+.result { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; text-decoration: none; color: var(--ink); }
+.result-sub { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
 .result-log .result-sub { display: inline; }
-.result-text { display: block; font-size: 0.92rem; overflow-wrap: anywhere; white-space: pre-line; }
-mark { background: #f3e3a8; color: inherit; border-radius: 2px; }
+.result-text { display: block; font-size: 0.95rem; color: var(--ink-soft); overflow-wrap: anywhere; white-space: pre-line; }
+mark { background: color-mix(in srgb, #e06a95 25%, transparent); color: inherit; border-radius: 2px; }
 
-/* ── New entry form ── */
-.new-form { display: flex; flex-direction: column; gap: 6px; }
-.new-form label { font-weight: 600; font-size: 0.9rem; margin-top: 8px; }
-.new-form textarea { resize: vertical; min-height: 9em; }
-.hint { font-weight: 400; color: var(--muted); font-size: 0.8rem; margin: 0; }
-.button { margin-top: 14px; padding: 12px 16px; font: 600 1rem var(--sans); color: #fff; background: var(--purple-deep); border: 0; border-radius: 8px; cursor: pointer; }
-.button-quiet { margin-top: 4px; background: transparent; color: var(--muted); font-weight: 400; font-size: 0.85rem; }
-.preview { margin-top: 18px; }
-.preview pre { background: var(--card); color: var(--card-ink); padding: 12px; border-radius: 8px; font: 0.78rem/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-
-/* ── /new: the one-page posting flow ── */
-.step-q { font-size: 1.1rem; margin: 4px 0 10px; }
+/* ── /new ── */
+.step-q { font-size: 1.15rem; margin: 6px 0 12px; }
 /* Each book is one big button, easy to hit with a thumb. */
 .pick-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
 .pick {
   display: flex; flex-direction: column; gap: 2px; text-align: left; width: 100%;
-  padding: 12px 14px; border: 1px solid #e3e0ee; border-radius: 8px; background: #fff;
+  padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
   font: inherit; color: var(--ink); cursor: pointer;
 }
-.pick:active, .pick:focus-visible { border-color: var(--purple-deep); outline: none; box-shadow: 0 0 0 3px rgba(110, 64, 201, 0.2); }
+.pick:active, .pick:focus-visible { border-color: var(--accent); outline: none; }
 .pick-title { font-weight: 700; }
-.pick-sub { font-size: 0.8rem; color: var(--muted); }
-/* The "you're writing in…" box at the top of the write step, in the card colours. */
-.chosen { background: var(--card); color: var(--card-ink); border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; }
+.pick-sub { font-size: 0.82rem; color: var(--muted); }
+.chosen { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; }
 .chosen-title { margin: 0; font-weight: 700; }
-.chosen .hint { color: var(--card-muted); overflow-wrap: anywhere; }
-.chosen .link-button { color: var(--gold); }
-/* Buttons that look like links, for small "Change"/"Forget" actions. */
-.link-button { background: none; border: 0; padding: 4px 0; font: inherit; font-size: 0.85rem; color: var(--purple-deep); text-decoration: underline; cursor: pointer; }
-.when { margin-top: 8px; font-size: 0.85rem; color: var(--muted); }
+.chosen .hint { overflow-wrap: anywhere; }
+.new-form { display: flex; flex-direction: column; gap: 6px; }
+.new-form label { font-weight: 600; font-size: 0.9rem; margin-top: 10px; }
+.new-form textarea { resize: vertical; min-height: 9em; }
+.hint { font-weight: 400; color: var(--muted); font-size: 0.84rem; margin: 0; }
+.button { margin-top: 14px; padding: 13px 16px; font: 600 1rem var(--sans); color: #fff; background: var(--ink); border: 0; border-radius: 10px; cursor: pointer; }
+.button-quiet { margin-top: 4px; background: transparent; color: var(--muted); font-weight: 500; font-size: 0.9rem; }
+@media (prefers-color-scheme: dark) { .button { color: var(--bg); } .button-quiet { color: var(--muted); } }
+.link-button { background: none; border: 0; padding: 4px 0; font: inherit; font-size: 0.88rem; color: var(--accent); text-decoration: underline; cursor: pointer; }
+.when { margin-top: 10px; font-size: 0.88rem; color: var(--muted); }
 .when summary { cursor: pointer; padding: 4px 0; }
-.status { min-height: 1.2em; margin: 6px 0 0; font-size: 0.88rem; }
-.finish-link { margin-top: 10px; }
-.last-sent { background: #fdf6ed; border-left: 3px solid #e67e22; padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 0 0 12px; }
+#post-status { min-height: 1.2em; margin: 6px 0 0; font-size: 0.9rem; }
+.finish-link { margin-top: 14px; }
 .finish-link a { color: var(--muted); }
-.finish-link code { font-size: 0.8em; }
-.button:disabled { opacity: 0.6; }
-h2 { line-height: 1.3; }
-
-/* ── Home: "Currently reading" strip ──
-   Kept deliberately simple for now; the look can be redesigned later. */
-.now-reading { margin-bottom: 16px; }
-.now-reading h2 { font-family: var(--mono); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 6px; }
-.now-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
-.now-list a { display: block; padding: 8px 12px; background: #fff; border: 1px solid #e3e0ee; border-radius: 8px; text-decoration: none; color: var(--ink); }
-.now-list strong { display: block; font-size: 0.95rem; }
-.now-list span { font-size: 0.75rem; color: var(--muted); }
+.finish-link code { font-size: 0.85em; }
+.last-sent { background: var(--chip-bg); color: var(--chip-ink); padding: 10px 14px; border-radius: 10px; margin: 16px 0 4px; }
 
 .empty, .more { color: var(--muted); }
 
 /* ── Footer ── */
-.site-footer { border-top: 1px solid #e3e0ee; padding: 16px 0 28px; font-size: 0.8rem; color: var(--muted); }
-.site-footer p { margin: 4px 0; }
+.site-footer { border-top: 1px solid var(--line); padding: 18px 0 32px; font-size: 0.85rem; color: var(--muted); }
+.footer-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; }
+.footer-row span:first-child { font: 400 1.05rem/1.4 var(--display); letter-spacing: 0.05em; }
+.site-footer a { color: var(--muted); }
 
-/* A bit more breathing room once there's space for it (tablets and up). */
+/* A little more room once there's space for it (tablets and up). */
 @media (min-width: 640px) {
-  .entry { padding: 14px 18px; }
-  h1 { font-size: 1.8rem; }
+  .entry { padding: 16px 20px 18px; }
+  .log-head h1 { font-size: 2.4rem; }
+  .brand-name { font-size: 2.1rem; }
 }
