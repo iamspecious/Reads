@@ -1,0 +1,81 @@
+# sync-bluesky.yml — checks your Bluesky threads every 30 minutes and adds
+# any new posts to the site.
+#
+# Which threads: every log in _logs/ that is "status: reading" and has a
+# "bluesky_thread:" link. Mark a book finished and it stops being checked.
+# All the logic is in scripts/sync_bluesky.py and scripts/import_bluesky.py.
+#
+# Why every 30 minutes: quick enough that a post shows up the same evening,
+# without asking Bluesky over and over. GitHub's timer can run a little late
+# when it's busy; that's normal. You can also press "Run workflow" on the
+# Actions tab to sync right now.
+#
+# Note: GitHub pauses timed workflows on a repo that has had no activity for
+# 60 days. If that ever happens, the Actions tab shows a button to turn it
+# back on.
+
+name: Sync Bluesky threads
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+# Write access to the repo's files, so it can commit new entries.
+# pages: write lets it ask GitHub Pages to rebuild afterwards (see below).
+permissions:
+  contents: write
+  pages: write
+
+# Shares a queue with the manual "Import Bluesky thread" button, so the two
+# can never run at the same time and write the same posts twice.
+concurrency:
+  group: bluesky
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch new posts
+        run: python scripts/sync_bluesky.py
+
+      # Commit only if something new came in. Most runs find nothing and
+      # finish quietly.
+      # Tripped me up: you might post from /new while a sync is running.
+      # Then the push is refused because main moved on. "pull --rebase" puts
+      # our commit on top of yours and we try again (up to 3 times).
+      - name: Commit new entries
+        id: commit
+        run: |
+          git add _entries assets/images/entries
+          if git diff --cached --quiet; then
+            echo "Nothing new."
+            exit 0
+          fi
+          count=$(git diff --cached --name-only --diff-filter=A -- _entries | wc -l)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Sync ${count} new Bluesky post(s)"
+          for attempt in 1 2 3; do
+            git pull --rebase --quiet origin "${GITHUB_REF_NAME}" && git push && echo "pushed=true" >> "$GITHUB_OUTPUT" && exit 0
+            sleep $((attempt * 5))
+          done
+          exit 1
+
+      # Ask GitHub Pages to rebuild the site with the new entries.
+      # Why: commits made by a workflow don't always start a Pages rebuild by
+      # themselves, so we ask for one directly. If one was already starting,
+      # this does no harm.
+      - name: Rebuild the site
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/builds" --silent || echo "Couldn't request a rebuild; the next push will rebuild the site."

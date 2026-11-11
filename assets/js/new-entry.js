@@ -256,6 +256,7 @@
       'started: ' + l.started + '\n' +
       'finished:\n' +
       'tags: ' + JSON.stringify(l.tags || []) + '\n' +
+      (l.thread ? 'bluesky_thread: ' + l.thread + '\n' : '') +
       '---\n';
   }
 
@@ -305,6 +306,11 @@
     ev.preventDefault();
     var slug = updateSlugHint();
     if (!slug) { $('nl-title').focus(); return; }
+    if ($('nl-thread').value.trim() && !threadLink($('nl-thread').value)) {
+      $('nl-slug').textContent = 'That Bluesky link doesn’t look right. It should look like https://bsky.app/profile/you.bsky.social/post/3abc…';
+      $('nl-thread').focus();
+      return;
+    }
     var l = {
       slug: slug,
       title: $('nl-title').value.trim(),
@@ -313,6 +319,7 @@
       status: 'reading',
       started: $('nl-started').value || ymd(new Date()),
       tags: $('nl-tags').value.split(',').map(function (t) { return t.trim(); }).filter(Boolean),
+      thread: threadLink($('nl-thread').value),
       count: 0,
       pending: true,
       savedAt: Date.now()
@@ -322,6 +329,15 @@
     save(PENDING_STORE, pending);
     save(RESUME_STORE, slug);
     window.location.href = newFileUrl('_logs', slug + '.md', buildLogFile(l));
+  }
+
+  // Tidy a pasted Bluesky post link, or return '' if it isn't one.
+  // Only plain post links are accepted, so nothing odd can end up in the
+  // log file (the sync script reads this line). Anything after the post ID,
+  // like "?ref=…", is dropped.
+  function threadLink(raw) {
+    var m = String(raw).trim().match(/^https:\/\/(?:www\.)?bsky\.app\/profile\/([A-Za-z0-9.:_-]+)\/post\/([A-Za-z0-9]+)/);
+    return m ? 'https://bsky.app/profile/' + m[1] + '/post/' + m[2] : '';
   }
 
   // ─── Wiring it all up ──────────────────────────────────────────────────

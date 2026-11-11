@@ -32,13 +32,17 @@ on:
 
 # The job needs to push a commit, so it asks for write access to the repo's
 # files. Nothing else (no issues, no secrets, no packages).
+# pages: write lets it ask GitHub Pages to rebuild once the entries are in.
 permissions:
   contents: write
+  pages: write
 
 # Only one import at a time. If you press Run twice, the second waits, so
 # the two can't both write the same posts and fight over the push.
+# The queue is shared with the timed "Sync Bluesky threads" workflow, so an
+# import and a sync can never run at once and add the same posts twice.
 concurrency:
-  group: import-bluesky
+  group: bluesky
   cancel-in-progress: false
 
 jobs:
@@ -76,6 +80,7 @@ jobs:
       # The commit is made by the GitHub Actions bot, so it's clear in the
       # history which entries came from an import.
       - name: Commit new entries
+        id: commit
         if: ${{ !inputs.dry_run }}
         env:
           LOG_SLUG: ${{ inputs.log_slug }}
@@ -89,4 +94,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Import ${count} Bluesky post(s) into ${LOG_SLUG}"
-          git push
+          # If someone posted while this ran, put our commit on top and retry.
+          for attempt in 1 2 3; do
+            git pull --rebase --quiet origin "${GITHUB_REF_NAME}" && git push && echo "pushed=true" >> "$GITHUB_OUTPUT" && exit 0
+            sleep $((attempt * 5))
+          done
+          exit 1
+
+      # Commits made by a workflow don't always start a Pages rebuild by
+      # themselves, so ask for one. Harmless if one was already starting.
+      - name: Rebuild the site
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/builds" --silent || echo "Couldn't request a rebuild; the next push will rebuild the site."

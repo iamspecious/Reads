@@ -60,6 +60,9 @@ class ContentTests(unittest.TestCase):
                 self.assertIn(f.get("type"), TYPES)
                 self.assertIn(f.get("status"), STATUSES)
                 self.assertRegex(f.get("started", ""), r"^\d{4}-\d{2}-\d{2}$", "started must be YYYY-MM-DD")
+                if f.get("bluesky_thread"):
+                    self.assertRegex(f["bluesky_thread"].strip('"'), r"^https://bsky\.app/profile/[A-Za-z0-9.:_-]+/post/[A-Za-z0-9]+$",
+                                     "bluesky_thread must be a link to a Bluesky post")
                 if f.get("status") == "finished":
                     self.assertRegex(f.get("finished", ""), r"^\d{4}-\d{2}-\d{2}$", "finished logs need a finished date")
 

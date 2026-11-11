@@ -202,6 +202,7 @@ main { padding-bottom: 40px; }
 .log-facts dd { margin: 0; font-weight: 600; }
 .log-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
 .log-note { margin-top: 12px; color: var(--ink-soft); }
+.log-thread { margin: 12px 0 0; font-size: 0.88rem; }
 
 /* ── Logs list ── */
 .filters { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-bottom: 10px; }
