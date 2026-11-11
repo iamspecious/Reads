@@ -108,6 +108,9 @@ csp: true
     <input id="nl-started" type="date">
     <label for="nl-tags">Tags <span class="hint">(optional, separated by commas)</span></label>
     <input id="nl-tags" autocomplete="off" placeholder="fantasy, romance">
+    <label for="nl-thread">Bluesky thread <span class="hint">(optional: link to the first post)</span></label>
+    {% comment %} If set, new posts in that thread are copied to the site every 30 minutes (see scripts/sync_bluesky.py). {% endcomment %}
+    <input id="nl-thread" type="url" inputmode="url" autocomplete="off" placeholder="https://bsky.app/profile/…/post/…">
     <p class="hint" id="nl-slug"></p>
     <p class="hint">Next, GitHub opens with the new log filled in. Tap <strong>Commit changes</strong>, then come back here: the write screen will be ready for the first entry.</p>
     <button type="submit" class="button">Save the new log on GitHub</button>

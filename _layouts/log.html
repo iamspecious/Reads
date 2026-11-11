@@ -25,6 +25,7 @@ layout: default
     {% if page.finished %}<div><dt>Finished</dt><dd><time datetime="{{ page.finished | date: '%Y-%m-%d' }}">{{ page.finished | date: "%-d %b %Y" }}</time></dd></div>{% endif %}
     <div><dt>Entries</dt><dd>{{ log_entries.size }}</dd></div>
   </dl>
+  {% if page.bluesky_thread %}<p class="log-thread"><a href="{{ page.bluesky_thread }}" rel="noopener">Thread on Bluesky ↗</a></p>{% endif %}
   {% if page.tags.size > 0 %}
     <p class="log-tags">{% for t in page.tags %}<span class="chip chip-quiet">{{ t }}</span>{% endfor %}</p>
   {% endif %}
