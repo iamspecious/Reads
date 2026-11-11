@@ -1,0 +1,17 @@
+{% comment %}
+  default.html — the frame every page sits in: head, header, content, footer.
+  Why one frame: change the header once and every page follows.
+{% endcomment %}
+<!doctype html>
+<html lang="en">
+<head>
+{% include head.html %}
+</head>
+<body>
+{% include header.html %}
+<main class="wrap" id="main">
+{{ content }}
+</main>
+{% include footer.html %}
+</body>
+</html>

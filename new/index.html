@@ -1,0 +1,72 @@
+---
+layout: default
+title: New entry
+description: Write a new reaction.
+permalink: /new/
+sitemap: false
+noindex: true
+---
+{% comment %}
+  new/index.html — the "post from my phone" page.
+
+  How it works: you fill in the form. The page writes the entry file for you
+  and opens GitHub's "create new file" screen with the name and text already
+  filled in. You tap "Commit changes" and you're done. GitHub Pages then
+  rebuilds the site in a minute or two.
+
+  Why it's built this way: this site has no server and stores no passwords or
+  tokens. GitHub's own page does the saving, using the login you already have
+  in the GitHub app or browser. If someone else finds this page, it's useless
+  to them: they can't commit to your repo.
+
+  sitemap: false keeps this page out of search engines' list, and
+  noindex: true (read by head.html) asks them not to show it either.
+  It's a tool, not a page to read.
+{% endcomment %}
+<h1>New entry</h1>
+
+{% comment %}
+  Logs you're still reading go first in the list, since that's almost always
+  what you're posting about. Finished and dropped ones follow.
+{% endcomment %}
+{% assign reading = site.logs | where: "status", "reading" | sort: "started" | reverse %}
+{% assign others = site.logs | where_exp: "l", "l.status != 'reading'" | sort: "title" %}
+
+<form id="new-entry" class="new-form"
+      data-repo="{{ site.repository }}" data-branch="{{ site.branch }}">
+  <label for="log">Log</label>
+  <select id="log" name="log" required>
+    {% for l in reading %}<option value="{{ l.slug }}">{{ l.title }}</option>{% endfor %}
+    {% if others.size > 0 %}
+      <optgroup label="Finished or dropped">
+        {% for l in others %}<option value="{{ l.slug }}">{{ l.title }}</option>{% endfor %}
+      </optgroup>
+    {% endif %}
+  </select>
+
+  <label for="chapter">Chapter <span class="hint">(optional)</span></label>
+  {% comment %} inputmode="numeric" brings up the number keypad on phones, but still allows "Prologue". {% endcomment %}
+  <input id="chapter" name="chapter" type="text" inputmode="numeric" autocomplete="off" placeholder="12">
+
+  <label for="text">Reaction</label>
+  <textarea id="text" name="text" rows="8" required placeholder="What just happened?!"></textarea>
+  <p class="hint" id="char-count" aria-live="polite"></p>
+
+  {% comment %}
+    The time is filled in with "now" but can be changed, for when you
+    jotted something down earlier and are only posting it later.
+  {% endcomment %}
+  <label for="when">When</label>
+  <input id="when" name="when" type="datetime-local" step="1">
+
+  <button type="submit" class="button">Open in GitHub to commit</button>
+  <button type="button" class="button button-quiet" id="clear-draft">Clear draft</button>
+  <p class="hint">Your draft is kept on this phone until you clear it, in case GitHub doesn't open.</p>
+</form>
+
+<details class="preview">
+  <summary>Preview the file</summary>
+  <pre id="preview"></pre>
+</details>
+
+<script src="{{ '/assets/js/new-entry.js' | relative_url }}" defer></script>

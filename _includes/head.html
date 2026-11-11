@@ -1,0 +1,56 @@
+{% comment %}
+  head.html — everything that goes inside <head> on every page.
+
+  Why it exists: one shared head keeps every page fast and consistent.
+  There is no tracking script here on purpose. The portfolio uses PostHog,
+  but this site promises no tracking, so nothing that phones home is loaded.
+  No web fonts either: the phone's own font shows up instantly and costs nothing.
+{% endcomment %}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% comment %} Pages that are tools, not reading (like /new), set noindex: true to stay out of search results. {% endcomment %}
+{% if page.noindex %}<meta name="robots" content="noindex">{% endif %}
+{% comment %}
+  Log pages write their own SEO tags. Every other page uses jekyll-seo-tag.
+
+  Why: jekyll-seo-tag can only use page.title and page.description exactly as
+  they are typed in the file. It can't build "A Court of Silver Flames —
+  chapter-by-chapter reactions" for us, and GitHub Pages won't run custom
+  plugins that could. So for log pages we write those tags right here.
+
+  Tripped me up: first I used {% seo title=false %} on log pages and only
+  added my own <title> and description. But jekyll-seo-tag still printed a
+  SECOND description (the site's generic one) and called the page a
+  "BlogPosting" dated the day of the build. Two descriptions confuse search
+  engines, so log pages now skip jekyll-seo-tag completely.
+{% endcomment %}
+{% if page.collection == "logs" %}
+  {% case page.type %}
+    {% when "game" %}{% assign style = "play-by-play reactions" %}{% assign doing = "playing" %}{% assign schema_type = "VideoGame" %}
+    {% when "show" %}{% assign style = "episode-by-episode reactions" %}{% assign doing = "watching" %}{% assign schema_type = "TVSeries" %}
+    {% else %}{% assign style = "chapter-by-chapter reactions" %}{% assign doing = "reading" %}{% assign schema_type = "Book" %}
+  {% endcase %}
+  {% assign log_entries = site.entries | where: "log", page.slug %}
+  {% capture seo_title %}{{ page.title }} — {{ style }}{% endcapture %}
+  {% capture seo_desc %}{{ page.title }} by {{ page.creator }}: {{ style }}, written live while {{ doing }}. {{ log_entries.size }} {% if log_entries.size == 1 %}entry{% else %}entries{% endif %} so far, {{ page.status }}.{% endcapture %}
+  <title>{{ seo_title | escape }} | {{ site.title }}</title>
+  <meta name="description" content="{{ seo_desc | escape }}">
+  <link rel="canonical" href="{{ page.url | absolute_url }}">
+  {% comment %} og: and twitter: tags decide how the link looks when you paste it into Bluesky, Discord, etc. {% endcomment %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ site.title }}">
+  <meta property="og:title" content="{{ seo_title | escape }}">
+  <meta property="og:description" content="{{ seo_desc | escape }}">
+  <meta property="og:url" content="{{ page.url | absolute_url }}">
+  <meta name="twitter:card" content="summary">
+  {% comment %}
+    This block tells search engines, in their own format (JSON-LD),
+    that the page is about a particular book, game or show and who made it.
+  {% endcomment %}
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":{{ seo_title | jsonify }},"description":{{ seo_desc | jsonify }},"url":{{ page.url | absolute_url | jsonify }},"about":{"@type":{{ schema_type | jsonify }},"name":{{ page.title | jsonify }},"author":{"@type":"Person","name":{{ page.creator | jsonify }}}}}</script>
+{% else %}
+  {% seo %}
+{% endif %}
+{% comment %} feed_meta comes from jekyll-feed. It adds the <link> that lets feed readers find feed.xml. {% endcomment %}
+{% feed_meta %}
+<link rel="stylesheet" href="{{ '/assets/css/reads.css' | relative_url }}">
