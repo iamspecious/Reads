@@ -9,7 +9,7 @@ WHAT IT DOES
  only new posts get added.
 
  It runs by itself every 30 minutes on GitHub (see
- .github/workflows/sync-bluesky.yml), so if you keep posting in your Bluesky
+ .github/workflows/bluesky-sync.yml), so if you keep posting in your Bluesky
  thread, those posts show up on the site without you doing anything.
 
 WHY ONLY "reading" LOGS
