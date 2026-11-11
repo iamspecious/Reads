@@ -1,21 +1,26 @@
 {% comment %}
-  header.html — the dark bar at the top of every page.
+  header.html — the top of every page: logo, name, and three links.
 
-  Why it looks like this: it copies the portfolio's dark header (#343a40)
-  so the two sites feel like one family. The nav is a plain row of links
-  that wraps on small phones instead of hiding behind a menu button.
-  A menu button would need JavaScript; plain links work everywhere.
+  Why it looks like this: the logo and the tall "BOOKS BY SPEC" lettering
+  (Bebas Neue, the same style as the logo) say whose site this is. Kept on
+  a plain white background so it feels clean and different from the
+  portfolio's dark header. The thin colour strip above it is the logo's
+  pink-to-teal gradient, used once so it's an accent and not a theme.
+
+  "New" isn't in the menu on purpose: it's a tool just for posting, opened
+  from the home screen icon. Readers don't need it.
 {% endcomment %}
+<div class="brand-strip" aria-hidden="true"></div>
 <header class="site-header">
-  <div class="wrap">
-    <a class="site-title" href="{{ '/' | relative_url }}">{{ site.title }}</a>
-    <p class="site-tagline">{{ site.description }}</p>
+  <div class="wrap header-row">
+    <a class="brand" href="{{ '/' | relative_url }}">
+      <img class="brand-logo" src="{{ '/assets/images/logo-160.jpg' | relative_url }}" alt="" width="44" height="44">
+      <span class="brand-name">{{ site.title }}</span>
+    </a>
     <nav class="site-nav" aria-label="Main">
       <a href="{{ '/' | relative_url }}"{% if page.url == "/" %} aria-current="page"{% endif %}>Latest</a>
-      <a href="{{ '/logs/' | relative_url }}"{% if page.url == "/logs/" %} aria-current="page"{% endif %}>All logs</a>
+      <a href="{{ '/logs/' | relative_url }}"{% if page.url == "/logs/" or page.collection == "logs" %} aria-current="page"{% endif %}>Logs</a>
       <a href="{{ '/search/' | relative_url }}"{% if page.url == "/search/" %} aria-current="page"{% endif %}>Search</a>
-      <a href="{{ '/new/' | relative_url }}"{% if page.url == "/new/" %} aria-current="page"{% endif %}>New</a>
-      <a href="{{ '/feed.xml' | relative_url }}">RSS</a>
     </nav>
   </div>
 </header>

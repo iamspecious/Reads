@@ -6,8 +6,9 @@
     show_log  true on the home feed (so you know which book it's from),
               false on a log page (where you already know)
 
-  Why it looks like this: it reuses the portfolio's "devlog" card style.
-  Dark card, gold timestamp, purple badge. Same family, new job.
+  Why it looks like this: a plain white card with the text front and centre.
+  The date, book and chapter sit in one small line on top, so they help
+  you find your place without getting in the way of reading.
 {% endcomment %}
 {% assign e = include.entry %}
 
@@ -36,16 +37,16 @@
       <time> carries the full machine date so search engines and feed tools
       can read it, while people see the short version.
     {% endcomment %}
-    <a class="entry-time" href="{{ entry_link }}" title="Link to this reaction">
+    <a class="entry-time" href="{{ entry_link }}" title="Link to this entry">
       <time datetime="{{ e.date | date_to_xmlschema }}">{{ e.date | date: "%-d %b %Y · %H:%M" }}</time>
     </a>
     {% if include.show_log and parent %}
-      <a class="badge badge-log" href="{{ parent.url | relative_url }}">{{ parent.title }}</a>
+      <a class="entry-log" href="{{ parent.url | relative_url }}">{{ parent.title }}</a>
     {% elsif include.show_log %}
       {% comment %} If the log file is missing we still show the slug, so the entry isn't silently orphaned. {% endcomment %}
-      <span class="badge badge-log">{{ e.log }}</span>
+      <span class="entry-log">{{ e.log }}</span>
     {% endif %}
-    {% if e.chapter %}<span class="badge badge-chapter">Ch {{ e.chapter }}</span>{% endif %}
+    {% if e.chapter %}<span class="chip">Ch {{ e.chapter }}</span>{% endif %}
   </header>
 
   {% comment %}
@@ -67,6 +68,6 @@
   {% endif %}
 
   {% if e.source_url %}
-    <a class="entry-source" href="{{ e.source_url }}" rel="noopener">on Bluesky ↗</a>
+    <a class="entry-source" href="{{ e.source_url }}" rel="noopener">Bluesky ↗</a>
   {% endif %}
 </article>

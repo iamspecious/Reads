@@ -2,43 +2,46 @@
 layout: default
 ---
 {% comment %}
-  index.html — the home page: the newest reactions from every log, mixed together.
+  index.html — the home page.
+  1. "Currently reading": a box with every log marked status: reading, so the
+     first thing you see is what's on the go and how far along it is.
+  2. "Latest": the newest entries from every log, newest first.
 
-  Why only 50: the page stays small and quick on a phone. Older entries are
-  never lost, they live on their log pages. (GitHub Pages does support one
-  paging plugin, but it only pages blog "posts", not collections like ours.)
-{% endcomment %}
-{% assign latest = site.entries | sort: "date" | reverse %}
-
-<h1 class="visually-hidden">Latest entries</h1>
-
-{% comment %}
-  "Currently reading": every log marked status: reading, newest first,
-  with how far along you are. It sits above the feed so the home page
-  answers "what's on the go right now?" at a glance.
-  Only shown when there's at least one. Design is a first pass, to revisit.
+  Why only 50 entries: the page stays small and quick on a phone. Older
+  entries are never lost, they live on their log pages. (GitHub Pages does
+  support one paging plugin, but it only pages blog "posts", not
+  collections like ours.)
 {% endcomment %}
 {% assign now_reading = site.logs | where: "status", "reading" | sort: "started" | reverse %}
 {% if now_reading.size > 0 %}
-<section class="now-reading" aria-labelledby="now-h">
-  <h2 id="now-h">Currently {% if now_reading.size == 1 and now_reading.first.type == "game" %}playing{% else %}reading{% endif %}</h2>
-  <ul class="now-list">
-    {% for l in now_reading %}
-      {% assign le = site.entries | where: "log", l.slug | sort: "date" %}
-      {% assign last_ch = nil %}
-      {% for x in le reversed %}{% if x.chapter %}{% assign last_ch = x.chapter %}{% break %}{% endif %}{% endfor %}
-      <li><a href="{{ l.url | relative_url }}"><strong>{{ l.title }}</strong><span>{{ l.creator }}{% if last_ch %} · up to Ch {{ last_ch }}{% endif %} · {{ le.size }} {% if le.size == 1 %}entry{% else %}entries{% endif %}</span></a></li>
-    {% endfor %}
-  </ul>
+<section class="now-box" aria-labelledby="now-h">
+  <h2 class="label" id="now-h">Currently reading</h2>
+  {% for l in now_reading %}
+    {% assign le = site.entries | where: "log", l.slug | sort: "date" %}
+    {% assign last_ch = nil %}
+    {% for x in le reversed %}{% if x.chapter %}{% assign last_ch = x.chapter %}{% break %}{% endif %}{% endfor %}
+    <a class="now-item" href="{{ l.url | relative_url }}">
+      <span class="now-title">{{ l.title }}</span>
+      <span class="now-creator">{{ l.creator }}</span>
+      <span class="now-meta">
+        {% if last_ch %}<span class="chip">Ch {{ last_ch }}</span>{% endif %}
+        <span>{{ le.size }} {% if le.size == 1 %}entry{% else %}entries{% endif %}</span>
+        {% if l.started %}<span>Since {{ l.started | date: "%-d %b" }}</span>{% endif %}
+      </span>
+    </a>
+  {% endfor %}
 </section>
 {% endif %}
+
+{% assign latest = site.entries | sort: "date" | reverse %}
+<h2 class="label">Latest</h2>
 <section class="feed" aria-label="Latest entries, newest first">
   {% for entry in latest limit: 50 %}
     {% include entry-card.html entry=entry show_log=true %}
   {% else %}
-    <p class="empty">Nothing here yet.</p>
+    <p class="empty">No entries yet.</p>
   {% endfor %}
 </section>
 {% if latest.size > 50 %}
-  <p class="more"><a href="{{ '/logs/' | relative_url }}">Older entries live on each log page →</a></p>
+  <p class="more"><a href="{{ '/logs/' | relative_url }}">Older entries are on each log page →</a></p>
 {% endif %}
