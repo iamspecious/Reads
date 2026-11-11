@@ -5,33 +5,26 @@
    _entries/. A new book is a new file in _logs/. "Posting" means adding
    that file to the repo. Then GitHub Pages rebuilds the site.
 
-   HOW IT SAVES WITHOUT OPENING GITHUB
-   GitHub has an API: a way for programs to do the same things you'd do on
-   github.com. This page uses it to add the file for you. GitHub only lets
-   it do that with your permission, which is the "posting key" (a
-   fine-grained personal access token) that you paste in once.
+   HOW POSTING WORKS
+   This page never saves anything itself. It writes the file for you, then
+   opens GitHub's own "new file" screen with the name and text filled in.
+   You tap "Commit changes" there, using the GitHub login you already have.
 
-   WHERE THE KEY LIVES, AND WHY THAT'S OK
-   - Only in this phone's browser storage (localStorage). Never in the repo,
-     never on the site, never sent anywhere except api.github.com.
-   - It only works on the one repo, and can only change files there
-     (Contents: read and write). It can't touch your account, other repos,
-     settings, or Actions.
-   - The /new page has a strict safety rule (Content-Security-Policy, see
-     head.html): only this site's own scripts run, and it can only talk to
-     api.github.com. So a key can't be sent off somewhere else.
-   - If the phone is lost, delete the key on GitHub (Settings → Developer
-     settings → Fine-grained tokens) and it stops working at once.
-   Tripped me up: browser storage is shared by every page on
-   iamspecious.github.io, which includes your portfolio and its analytics
-   script. That script is from a well-known company and has no reason to
-   read it, but it's the reason the key is limited to this one repo and
-   files only: even in the worst case, the most anyone could do is edit
-   this site, and every change is in the git history and can be undone.
+   WHY NOT SAVE STRAIGHT FROM THIS PAGE
+   That would need a GitHub access key stored in the phone's browser. We
+   built it, then took it out on purpose. Browser storage is shared by every
+   page on iamspecious.github.io (your portfolio too, with its analytics
+   script), so a stored key would be one more thing that could leak.
+   With no key, there is nothing secret on this page at all: the worst a
+   stranger can do with it is open GitHub's screen, where they have no
+   permission to commit. The cost is one extra tap on GitHub per post.
 
-   WITHOUT A KEY
-   Everything still works the old way: Post opens GitHub's "new file" screen
-   with the file filled in, and you tap Commit there.
+   WHAT THIS PAGE DOES REMEMBER (in this phone's browser only, nothing secret)
+   - your unfinished draft, so a closed tab doesn't lose it
+   - your last post sent to GitHub, so you can bring it back if the Commit
+     didn't go through
+   - a new book you just started, so it shows in the list straight away,
+     before the site has rebuilt with it
 
    WHAT THE FILES LOOK LIKE (same as the Bluesky importer makes)
      _entries/2026-11-11-143210-a-court-of-silver-flames.txt
@@ -46,19 +39,24 @@
   'use strict';
 
   var DATA = JSON.parse(document.getElementById('reads-data').textContent);
-  var API = 'https://api.github.com';
-  var KEY_STORE = 'reads-posting-key';
   var DRAFT_STORE = 'reads-new-draft';
-  // Logs made on this phone that the site hasn't rebuilt with yet.
-  // Why: after you start a new book, it takes a minute or two before the
-  // site's own list includes it. Until then we remember it here, so you can
-  // keep posting to it straight away.
+  var SENT_STORE = 'reads-last-sent';
   var PENDING_STORE = 'reads-pending-logs';
+  var RESUME_STORE = 'reads-resume-log';
+  // A started book that never shows up on the site (the Commit was never
+  // tapped) is forgotten after this long, so it doesn't hang around forever.
+  var PENDING_MAX_MS = 2 * 24 * 60 * 60 * 1000;
+  // Very long links can get cut off by browsers or by GitHub.
+  // About 8,000 characters is a safe ceiling.
+  var MAX_URL = 8000;
+
+  // Remove the old posting key if an earlier version of this page saved one.
+  // The page no longer uses it, and it shouldn't sit in the browser.
+  try { localStorage.removeItem('reads-posting-key'); } catch (e) { /* nothing to remove */ }
 
   var $ = function (id) { return document.getElementById(id); };
-  var steps = ['step-pick', 'step-newlog', 'step-write', 'step-done'];
-  var current = null;      // the log being written to
-  var newLog = null;       // set when that log still has to be created
+  var steps = ['step-pick', 'step-newlog', 'step-write'];
+  var current = null;   // the log being written to
 
   // ─── Small helpers ──────────────────────────────────────────────────────
 
@@ -74,7 +72,6 @@
   function pad(n) { return String(n).padStart(2, '0'); }
   function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
   function hms(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
-  function toLocalInput(d) { return ymd(d) + 'T' + hms(d); }
 
   // The phone's offset from UTC, like "+0100", so Jekyll puts the post on the right day.
   // Tripped me up: getTimezoneOffset() is backwards (Berlin in winter is -60), so we flip it.
@@ -113,18 +110,10 @@
     return /^\d+$/.test(raw) ? raw : q(raw);
   }
 
-  // The API wants file contents as base64 (text made of safe letters only).
-  // Tripped me up: the browser's btoa() only handles plain English letters
-  // and breaks on emoji or "é". Turning the text into UTF-8 bytes first fixes it.
-  function toBase64(text) {
-    var bytes = new TextEncoder().encode(text), bin = '';
-    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return btoa(bin);
-  }
-  function fromBase64(b64) {
-    var bin = atob(b64.replace(/\s/g, '')), bytes = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new TextDecoder().decode(bytes);
+  // The link that opens GitHub's "new file" screen, already filled in.
+  function newFileUrl(folder, filename, content) {
+    return 'https://github.com/' + DATA.repo + '/new/' + DATA.branch + '/' + folder +
+      '?filename=' + encodeURIComponent(filename) + '&value=' + encodeURIComponent(content);
   }
 
   function show(id) {
@@ -137,8 +126,12 @@
   function allLogs() {
     var known = {};
     DATA.logs.forEach(function (l) { known[l.slug] = true; });
-    // Drop pending logs once the real site includes them.
-    var pending = load(PENDING_STORE, []).filter(function (l) { return !known[l.slug]; });
+    // Keep a remembered new book only until the real site includes it,
+    // or until it's clearly never going to (the Commit wasn't tapped).
+    var now = Date.now();
+    var pending = load(PENDING_STORE, []).filter(function (l) {
+      return !known[l.slug] && now - (l.savedAt || 0) < PENDING_MAX_MS;
+    });
     save(PENDING_STORE, pending.length ? pending : null);
     return DATA.logs.concat(pending);
   }
@@ -150,9 +143,12 @@
     // textContent (not innerHTML) so a title can never turn into HTML.
     var t = document.createElement('span'); t.className = 'pick-title'; t.textContent = l.title;
     var s = document.createElement('span'); s.className = 'pick-sub';
-    s.textContent = l.creator + ' · ' + l.type + (l.count ? ' · ' + l.count + (l.count === 1 ? ' entry' : ' entries') : '') + (l.lastChapter ? ' · last: Ch ' + l.lastChapter : '');
+    s.textContent = l.creator + ' · ' + l.type +
+      (l.pending ? ' · new, waiting for the site to update' : '') +
+      (l.count ? ' · ' + l.count + (l.count === 1 ? ' entry' : ' entries') : '') +
+      (l.lastChapter ? ' · last: Ch ' + l.lastChapter : '');
     b.appendChild(t); b.appendChild(s);
-    b.addEventListener('click', function () { chooseLog(l, null); });
+    b.addEventListener('click', function () { chooseLog(l); });
     return b;
   }
 
@@ -171,17 +167,42 @@
     $('reading-list').hidden = none;
     $('show-others').hidden = none;
     $('others').hidden = !none;
-    if (none) $('others').querySelector('.step-q').textContent = "What are you reading?";
+    if (none) $('others').querySelector('.step-q').textContent = 'What are you reading?';
+    renderLastSent();
     show('step-pick');
+  }
+
+  // ─── "Didn't commit it?" safety net ────────────────────────────────────
+
+  // Posting clears the draft (so the next post starts fresh), but keeps a
+  // copy of what was sent for a day. If the Commit on GitHub didn't happen
+  // (lost signal, tapped away), one tap brings the text back.
+  function renderLastSent() {
+    var sent = load(SENT_STORE, null);
+    var fresh = sent && Date.now() - sent.at < 24 * 60 * 60 * 1000;
+    if (sent && !fresh) save(SENT_STORE, null);
+    $('last-sent').hidden = !fresh;
+    if (fresh) {
+      var d = new Date(sent.at);
+      $('last-sent-time').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+  }
+
+  function restoreLastSent() {
+    var sent = load(SENT_STORE, null);
+    var l = sent && allLogs().filter(function (x) { return x.slug === sent.log; })[0];
+    if (!l) { $('last-sent').hidden = true; return; }
+    save(DRAFT_STORE, { log: sent.log, chapter: sent.chapter, text: sent.text });
+    save(SENT_STORE, null);
+    chooseLog(l);
   }
 
   // ─── Step: write ───────────────────────────────────────────────────────
 
-  function chooseLog(l, pendingCreate) {
+  function chooseLog(l) {
     current = l;
-    newLog = pendingCreate;
     $('w-title').textContent = l.title + ' — ' + l.creator;
-    $('w-last').textContent = pendingCreate ? 'New log. This will be the first entry.'
+    $('w-last').textContent = l.pending ? 'New log. If you tapped Commit for it on GitHub, you’re all set to write the first entry.'
       : l.count ? 'Last entry ' + l.lastDate + (l.lastChapter ? ', Ch ' + l.lastChapter : '') + ': “' + l.lastText + '”'
       : 'No entries yet.';
     // Fill in the chapter you were last on. Usually you're still on it,
@@ -196,7 +217,10 @@
     }
     $('when').value = '';
     $('when-label').textContent = 'now';
-    $('finish-log').hidden = !(l.status === 'reading' && !pendingCreate && getKey());
+    // "Mark finished" opens GitHub's edit screen for this log's file.
+    // GitHub can't pre-fill an edit, so the link text says what to change.
+    $('finish-log').hidden = l.status !== 'reading' || !!l.pending;
+    $('finish-log').href = 'https://github.com/' + DATA.repo + '/edit/' + DATA.branch + '/_logs/' + encodeURIComponent(l.slug) + '.md';
     $('post-status').textContent = '';
     updateCount();
     show('step-write');
@@ -208,12 +232,9 @@
     if (current) save(DRAFT_STORE, { log: current.slug, chapter: $('chapter').value, text: $('text').value });
   }
 
-  // bump: how many seconds to add. Used when a file with that exact
-  // time already exists (two posts in the same second), see post().
-  function buildEntry(bump) {
+  function buildEntry() {
     var d = $('when').value ? new Date($('when').value) : new Date();
     if (isNaN(d.getTime())) d = new Date();
-    d = new Date(d.getTime() + (bump || 0) * 1000);
     // File name: date, time, then the log. The time keeps it unique, and it
     // never changes, which matters because it becomes the share link.
     var filename = ymd(d) + '-' + hms(d).replace(/:/g, '') + '-' + current.slug + '.txt';
@@ -223,7 +244,7 @@
       'log: ' + current.slug + '\n' +
       'chapter: ' + chapterValue($('chapter').value) + '\n' +
       '---\n' + body + '\n';
-    return { path: '_entries/' + filename, anchor: 'e-' + filename.replace(/\.txt$/, ''), content: content };
+    return { filename: filename, content: content };
   }
 
   function buildLogFile(l) {
@@ -238,43 +259,6 @@
       '---\n';
   }
 
-  // ─── Talking to GitHub ─────────────────────────────────────────────────
-
-  function getKey() { return load(KEY_STORE, null); }
-
-  // One call to GitHub's API. Turns GitHub's error codes into plain words.
-  function gh(method, path, body) {
-    return fetch(API + '/repos/' + DATA.repo + path, {
-      method: method,
-      headers: {
-        'Authorization': 'Bearer ' + getKey(),
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
-      },
-      body: body ? JSON.stringify(body) : undefined
-    }).then(function (r) {
-      if (r.ok) return r.json();
-      var msg = {
-        401: 'GitHub didn’t accept the posting key. It may have expired. Paste a new one below.',
-        403: 'The posting key isn’t allowed to change files. It needs Contents: Read and write.',
-        404: 'The posting key can’t see the ' + DATA.repo + ' repo. Check its repository access.',
-        409: 'GitHub was busy with another change. Try Post again.',
-        422: 'That file already exists. Wait a second and try Post again.'
-      }[r.status] || ('GitHub said error ' + r.status + '. Try again in a moment.');
-      var err = new Error(msg); err.status = r.status; throw err;
-    }, function () { throw new Error('Couldn’t reach GitHub. Check your connection and try again.'); });
-  }
-
-  // Add one new file. "PUT /contents/<path>" without a "sha" means "create",
-  // so it can never overwrite a file that's already there.
-  function createFile(path, content, message) {
-    return gh('PUT', '/contents/' + path.split('/').map(encodeURIComponent).join('/'), {
-      message: message,
-      content: toBase64(content),
-      branch: DATA.branch
-    });
-  }
-
   // ─── Posting ───────────────────────────────────────────────────────────
 
   function post(ev) {
@@ -287,84 +271,16 @@
       return;
     }
     var entry = buildEntry();
+    var url = newFileUrl('_entries', entry.filename, entry.content);
+    if (url.length > MAX_URL && !confirm('This is very long and GitHub may cut it off. Open anyway?')) return;
 
-    // No key: the old way. GitHub's own screen, you tap Commit.
-    if (!getKey()) {
-      var url = 'https://github.com/' + DATA.repo + '/new/' + DATA.branch + '/_entries' +
-        '?filename=' + encodeURIComponent(entry.path.replace('_entries/', '')) +
-        '&value=' + encodeURIComponent(entry.content);
-      // Very long links can get cut off; about 8,000 characters is a safe ceiling.
-      if (url.length > 8000 && !confirm('This is very long and GitHub may cut it off. Open anyway?')) return;
-      window.location.href = url;
-      return;
-    }
-
-    var btn = $('post-button');
-    btn.disabled = true;
-    $('post-status').textContent = 'Posting…';
-
-    // A brand-new log is saved first, then the entry. Two small saves.
-    // If the log saves but the entry fails, we remember the log already
-    // exists, so pressing Post again only retries the entry.
-    var first = newLog
-      ? createFile('_logs/' + newLog.slug + '.md', buildLogFile(newLog), 'Start log: ' + newLog.title).then(function () {
-          var pending = load(PENDING_STORE, []);
-          pending.push(current);
-          save(PENDING_STORE, pending);
-          newLog = null;
-        })
-      : Promise.resolve();
-
-    // Save the entry. If GitHub says the file name is taken (422: two posts
-    // in the same second), try again one second later, up to 3 times.
-    // Creating never overwrites, so nothing can be lost this way.
-    function saveEntry(bump) {
-      entry = buildEntry(bump);
-      var ch = $('chapter').value.trim();
-      return createFile(entry.path, entry.content, 'New entry: ' + current.title + (ch ? ' · Ch ' + ch : ''))
-        .catch(function (err) {
-          if (err.status === 422 && bump < 3) return saveEntry(bump + 1);
-          throw err;
-        });
-    }
-
-    first.then(function () { return saveEntry(0); }).then(function () {
-      // Remember what was just posted, so "Write another" picks up from here
-      // (same chapter, and "last entry" shows this one).
-      var ch = $('chapter').value.trim();
-      current.count = (current.count || 0) + 1;
-      if (ch) current.lastChapter = ch;
-      current.lastText = $('text').value.trim().slice(0, 90);
-      current.lastDate = 'just now';
-      save(DRAFT_STORE, null);
-      $('done-link').href = DATA.baseurl + '/logs/' + current.slug + '/#' + entry.anchor;
-      show('step-done');
-    }).catch(function (err) {
-      $('post-status').textContent = err.message;
-      if (err.status === 401) openKeyForm();
-    }).then(function () { btn.disabled = false; });
-  }
-
-  // Mark the current log finished: change "status:" and "finished:" in its file.
-  // Updating (not creating) needs the file's current "sha", GitHub's
-  // fingerprint of it, so we read the file first. That also means we never
-  // overwrite a change made somewhere else in the meantime.
-  function finishLog() {
-    if (!confirm('Mark “' + current.title + '” as finished today?')) return;
-    var path = '/contents/_logs/' + encodeURIComponent(current.slug) + '.md';
-    $('post-status').textContent = 'Saving…';
-    gh('GET', path + '?ref=' + encodeURIComponent(DATA.branch)).then(function (file) {
-      var text = fromBase64(file.content)
-        .replace(/^status:.*$/m, 'status: finished')
-        .replace(/^finished:.*$/m, 'finished: ' + ymd(new Date()));
-      return gh('PUT', path, { message: 'Finish log: ' + current.title, content: toBase64(text), sha: file.sha, branch: DATA.branch });
-    }).then(function () {
-      current.status = 'finished';
-      // Also update the remembered copy, if this log was started on this phone.
-      save(PENDING_STORE, load(PENDING_STORE, []).map(function (l) { return l.slug === current.slug ? current : l; }));
-      $('finish-log').hidden = true;
-      $('post-status').textContent = 'Marked finished. It moves out of “reading” after the next rebuild.';
-    }).catch(function (err) { $('post-status').textContent = err.message; });
+    // Keep a copy for a day in case the Commit doesn't happen, then start
+    // the next post fresh.
+    save(SENT_STORE, { at: Date.now(), log: current.slug, chapter: $('chapter').value, text: $('text').value });
+    save(DRAFT_STORE, null);
+    // Same tab, not a new one: phones often block pop-up tabs, and the
+    // GitHub app can catch a normal link better.
+    window.location.href = url;
   }
 
   // ─── New log form ──────────────────────────────────────────────────────
@@ -382,6 +298,9 @@
     return taken ? '' : slug;
   }
 
+  // Starting a book is two quick Commits: this one makes the book's file,
+  // then you come back here and the write screen is already open on it.
+  // (GitHub's "new file" screen can only make one file at a time.)
   function submitNewLog(ev) {
     ev.preventDefault();
     var slug = updateSlugHint();
@@ -394,50 +313,15 @@
       status: 'reading',
       started: $('nl-started').value || ymd(new Date()),
       tags: $('nl-tags').value.split(',').map(function (t) { return t.trim(); }).filter(Boolean),
-      count: 0
+      count: 0,
+      pending: true,
+      savedAt: Date.now()
     };
-
-    // Without a key there's no way to create two files in one go, so the
-    // new log is made on GitHub's screen first. After you commit it there,
-    // come back and it'll be in the list (once the site rebuilds).
-    if (!getKey()) {
-      window.location.href = 'https://github.com/' + DATA.repo + '/new/' + DATA.branch + '/_logs' +
-        '?filename=' + encodeURIComponent(slug + '.md') + '&value=' + encodeURIComponent(buildLogFile(l));
-      return;
-    }
-    chooseLog(l, l);
-  }
-
-  // ─── Posting key box ───────────────────────────────────────────────────
-
-  function renderKeyBox() {
-    var has = !!getKey();
-    $('key-box').hidden = false;
-    $('key-state').textContent = has ? 'Quick posting is on for this phone.' : 'Quick posting is off: Post opens GitHub so you can tap Commit.';
-    $('key-toggle').textContent = has ? 'Forget the posting key' : 'Turn on quick posting';
-    $('post-button').textContent = has ? 'Post' : 'Open in GitHub to commit';
-  }
-
-  function openKeyForm() { $('key-form').hidden = false; $('key-input').focus(); }
-
-  function saveKey(ev) {
-    ev.preventDefault();
-    var key = $('key-input').value.trim();
-    if (!key) return;
-    save(KEY_STORE, key);
-    $('key-status').textContent = 'Checking…';
-    // A quick read of the repo, to check the key works before you rely on it.
-    gh('GET', '').then(function () {
-      $('key-input').value = '';
-      $('key-form').hidden = true;
-      $('key-status').textContent = '';
-      renderKeyBox();
-      if (current) chooseLog(current, newLog);
-    }).catch(function (err) {
-      save(KEY_STORE, null);
-      $('key-status').textContent = err.message;
-      renderKeyBox();
-    });
+    var pending = load(PENDING_STORE, []).filter(function (x) { return x.slug !== slug; });
+    pending.push(l);
+    save(PENDING_STORE, pending);
+    save(RESUME_STORE, slug);
+    window.location.href = newFileUrl('_logs', slug + '.md', buildLogFile(l));
   }
 
   // ─── Wiring it all up ──────────────────────────────────────────────────
@@ -456,19 +340,19 @@
   $('when').addEventListener('change', function () {
     $('when-label').textContent = $('when').value ? $('when').value.replace('T', ' ').slice(0, 16) : 'now';
   });
-  $('finish-log').addEventListener('click', finishLog);
-  $('write-another').addEventListener('click', function () { chooseLog(current, null); });
-  $('key-toggle').addEventListener('click', function () {
-    if (getKey()) {
-      if (confirm('Forget the posting key on this phone? (To fully switch it off, also delete it on GitHub.)')) { save(KEY_STORE, null); renderKeyBox(); }
-    } else { openKeyForm(); }
-  });
-  $('key-form').addEventListener('submit', saveKey);
+  $('restore-last').addEventListener('click', restoreLastSent);
 
-  renderKeyBox();
-
-  // If there's an unfinished draft, go straight back to it.
+  // Where to start:
+  //  1. just came back from committing a new book -> write screen for it
+  //  2. an unfinished draft -> back to it
+  //  3. otherwise -> "What are you reading?"
+  var logs = allLogs();
+  var find = function (slug) { return logs.filter(function (l) { return l.slug === slug; })[0]; };
+  var resume = find(load(RESUME_STORE, null));
+  save(RESUME_STORE, null);
   var draft = load(DRAFT_STORE, null);
-  var draftLog = draft && draft.text && allLogs().filter(function (l) { return l.slug === draft.log; })[0];
-  if (draftLog) chooseLog(draftLog, null); else renderPick();
+  var draftLog = draft && draft.text && find(draft.log);
+  if (resume) chooseLog(resume);
+  else if (draftLog) chooseLog(draftLog);
+  else renderPick();
 })();

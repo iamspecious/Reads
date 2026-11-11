@@ -16,22 +16,22 @@ csp: true
     2. Not there? "Something else" shows every other log, plus
        "Start a new one", which asks for title, author/studio and type.
     3. Write: chapter (filled in with the last chapter you logged), the text,
-       and Post. Done. It's saved straight into the repo.
+       and Post. GitHub's "new file" screen opens with it all filled in, and
+       you tap "Commit changes". The site updates a minute or two later.
 
-  How "Post" saves without opening GitHub: the page talks to GitHub's API
-  using a posting key (a GitHub "fine-grained token") that you paste in once.
-  The key is kept only in this phone's browser. It is never in the repo or
-  on the site. See assets/js/new-entry.js for the details and the trade-offs.
-  Without a key, the page still works the old way: it opens GitHub's
-  new-file screen with everything filled in, and you tap Commit.
+  Why GitHub's screen does the saving: this page holds no keys or passwords
+  at all, on purpose. Saving uses the GitHub login you already have.
+  A stranger who finds this page can't post: GitHub won't let them commit.
+  (A version that saved straight from this page with a stored key was built
+  and then removed; the reasons are at the top of assets/js/new-entry.js.)
 
   sitemap: false and noindex: true keep this page out of search engines.
   It's a tool, not a page to read.
 
-  csp: true switches on a safety rule for the browser (written in head.html,
-  called a Content-Security-Policy). On this page, scripts may only come from
-  this site, and the page may only talk to GitHub's API. So even if something
-  sneaky got onto the page, it couldn't send your key anywhere else.
+  csp: true switches on a strict safety rule for the browser (written in
+  head.html, called a Content-Security-Policy). On this page, scripts may only
+  come from this site, and the page can't send data anywhere at all. So even
+  if something sneaky got onto the page, it couldn't send your drafts off.
 {% endcomment %}
 
 {% comment %}
@@ -75,6 +75,11 @@ csp: true
 
 {% comment %} Step 1: pick the book. Filled in by the script. {% endcomment %}
 <section id="step-pick" class="step" hidden>
+  {% comment %} Shown for a day after a post is sent to GitHub, in case the Commit didn't happen. {% endcomment %}
+  <p class="hint last-sent" id="last-sent" hidden>
+    Sent a post to GitHub at <span id="last-sent-time"></span>. Didn't commit it?
+    <button type="button" class="link-button" id="restore-last">Bring it back</button>
+  </p>
   <h2 class="step-q">What are you reading?</h2>
   <div id="reading-list" class="pick-list"></div>
   <button type="button" class="button button-quiet" id="show-others">Something else…</button>
@@ -104,7 +109,8 @@ csp: true
     <label for="nl-tags">Tags <span class="hint">(optional, separated by commas)</span></label>
     <input id="nl-tags" autocomplete="off" placeholder="fantasy, romance">
     <p class="hint" id="nl-slug"></p>
-    <button type="submit" class="button">Next: write the first entry</button>
+    <p class="hint">Next, GitHub opens with the new log filled in. Tap <strong>Commit changes</strong>, then come back here: the write screen will be ready for the first entry.</p>
+    <button type="submit" class="button">Save the new log on GitHub</button>
     <button type="button" class="button button-quiet" data-back>← Back</button>
   </form>
 </section>
@@ -132,39 +138,16 @@ csp: true
     </details>
 
     <button type="submit" class="button" id="post-button">Post</button>
+    <p class="hint">Opens GitHub with your post filled in. Tap <strong>Commit changes</strong> there.</p>
     <p class="status" id="post-status" role="status" aria-live="polite"></p>
   </form>
-  <button type="button" class="link-button finish-link" id="finish-log" hidden>Finished this one? Mark it finished</button>
-</section>
-
-{% comment %} After posting. {% endcomment %}
-<section id="step-done" class="step" hidden>
-  <h2 class="step-q">Posted ✓</h2>
-  <p>It'll be on the site in a minute or two, once GitHub rebuilds it.</p>
-  <p><a id="done-link" href="#">See it on the log page</a></p>
-  <button type="button" class="button" id="write-another">Write another</button>
-</section>
-
-{% comment %}
-  The posting key settings. Always at the bottom, out of the way.
-{% endcomment %}
-<section class="key-box" id="key-box" hidden>
-  <p class="hint" id="key-state"></p>
-  <button type="button" class="link-button" id="key-toggle"></button>
-  <form id="key-form" class="new-form" hidden>
-    <p class="hint">
-      Make a key at
-      <a href="https://github.com/settings/personal-access-tokens/new" rel="noopener">GitHub → Settings → Fine-grained tokens</a>:
-      <br>Repository access: <strong>Only select repositories → {{ site.repository }}</strong>
-      <br>Permissions: <strong>Contents → Read and write</strong> (nothing else)
-      <br>Expiration: <strong>90 days</strong> (GitHub emails you before it runs out; then make a new one)
-      <br>Then paste it here. It stays on this phone only.
-    </p>
-    <label for="key-input">Posting key</label>
-    <input id="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
-    <button type="submit" class="button">Save key</button>
-    <p class="status" id="key-status" role="status" aria-live="polite"></p>
-  </form>
+  {% comment %}
+    Marking a book finished means editing its log file. GitHub can't pre-fill
+    an edit, so this opens the file and the text says what to change.
+  {% endcomment %}
+  <p class="hint finish-link">
+    <a id="finish-log" href="#" rel="noopener" hidden>Finished this one? Open it on GitHub and change <code>status: reading</code> to <code>status: finished</code>, and fill in <code>finished:</code> with today's date.</a>
+  </p>
 </section>
 
 <script src="{{ '/assets/js/new-entry.js' | relative_url }}" defer></script>

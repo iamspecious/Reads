@@ -16,33 +16,26 @@ It's a plain Jekyll site built by GitHub Pages. No server, no paid services, no 
 Open **https://iamspecious.github.io/reads/new/** (add it to your home screen). It's one page:
 
 1. **What are you reading?** Tap the book. Books marked `reading` are at the top.
-2. Not there? Tap **Something else…** and pick another log, or **Start a new book, game or show** (title, author/studio, type).
-3. Write your reaction. The chapter is filled in with the last one you logged. Tap **Post**. It's on the site a minute or two later.
+2. Not there? Tap **Something else…** and pick another log, or **Start a new book, game or show**.
+3. Write your reaction. The chapter is filled in with the last one you logged.
+4. Tap **Post**. GitHub opens with the file filled in. Tap **Commit changes**. It's on the site a minute or two later.
 
-When you finish a book, tap **Finished this one?** on the write screen to mark it finished.
+You need to be signed in to GitHub in that browser or the GitHub app.
 
-### Quick posting (one-time setup)
+- **New book:** fill in the title, author and type, and tap *Save the new log on GitHub*. Tap **Commit changes**, then come back to `/new`. The write screen is ready for the first entry. That's two quick Commits, only when you start something new.
+- **Finished a book?** On the write screen, the *Finished this one?* link opens the book's file on GitHub. Change `status: reading` to `status: finished`, fill in `finished:` with the date, and commit.
+- **Lost a post?** If GitHub didn't save it (lost signal, tapped away), `/new` shows *Didn't commit it? Bring it back* for a day after you post.
 
-So Post can save without opening GitHub, the page needs a posting key:
-
-1. Go to GitHub → Settings → Developer settings → **Fine-grained tokens** → Generate new token.
-2. **Repository access:** Only select repositories → `iamspecious/reads`.
-3. **Permissions:** Contents → **Read and write**. Nothing else.
-4. Set **Expiration** to 90 days (GitHub emails you before it runs out) and copy the key.
-5. On `/new`, tap **Turn on quick posting**, paste it and tap Save.
-
-The key stays only in that phone's browser. It isn't in the repo or on the site, and it can only change files in this one repo. If you lose the phone, delete the key on GitHub and it stops working straight away. Every change it makes is in the git history and can be undone.
-
-Without a key the page still works: Post opens GitHub's new-file screen with everything filled in, and you tap **Commit changes**.
+The page stores no keys or passwords. Saving always happens on GitHub, with your own login.
 
 ## Security, in short
 
 - **Only you can change the site.** You're the only person with write access to the repo. Anyone else who taps Post just gets GitHub's "fork this repository" screen, and their changes go nowhere unless you merge them.
-- **The posting key** lives only in your phone's browser. It can only change files in this one repo, and it expires after 90 days. Delete it on GitHub any time and it stops working straight away.
-- **`/new` has a strict browser safety rule:** only this site's own scripts can run there, and the page can only send data to GitHub's API.
-- **Nothing is ever overwritten by posting.** New files are only created. Marking a log finished checks it has the latest version first. Every change is in the git history and can be undone.
+- **No keys or passwords anywhere on the site.** Posting always goes through GitHub's own screen, with your own login and two-factor sign-in.
+- **`/new` has a strict browser safety rule:** only this site's own scripts can run there, and the page can't send data anywhere by itself.
+- **Every change is in the git history** and can be undone.
 - **Every push is checked.** The *Check* action tests the importer and validates every log and entry file. A red X on the Actions tab means a file needs fixing, and it says which one.
-- **Worth doing:** turn on two-factor sign-in for your GitHub account (Settings → Password and authentication). Your account is the only key to the site.
+- **Keep two-factor sign-in on** for your GitHub account. Your account is the only key to the site.
 
 ## Import a Bluesky thread
 
