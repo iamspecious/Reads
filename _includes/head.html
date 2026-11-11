@@ -27,7 +27,7 @@
   chapter-by-chapter reactions" for us, and GitHub Pages won't run custom
   plugins that could. So for log pages we write those tags right here.
 
-  Tripped me up: first I used {% seo title=false %} on log pages and only
+  Tripped me up: first I used the seo tag with title=false on log pages and only
   added my own <title> and description. But jekyll-seo-tag still printed a
   SECOND description (the site's generic one) and called the page a
   "BlogPosting" dated the day of the build. Two descriptions confuse search
@@ -56,7 +56,9 @@
     This block tells search engines, in their own format (JSON-LD),
     that the page is about a particular book, game or show and who made it.
   {% endcomment %}
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":{{ seo_title | jsonify }},"description":{{ seo_desc | jsonify }},"url":{{ page.url | absolute_url | jsonify }},"about":{"@type":{{ schema_type | jsonify }},"name":{{ page.title | jsonify }},"author":{"@type":"Person","name":{{ page.creator | jsonify }}}}}</script>
+  {% comment %} "</" becomes "<\/" so a title can never end this <script> block early (same rule as on /new). {% endcomment %}
+  {%- capture ld -%}{"@context":"https://schema.org","@type":"WebPage","name":{{ seo_title | jsonify }},"description":{{ seo_desc | jsonify }},"url":{{ page.url | absolute_url | jsonify }},"about":{"@type":{{ schema_type | jsonify }},"name":{{ page.title | jsonify }},"author":{"@type":"Person","name":{{ page.creator | jsonify }}}}}{%- endcapture %}
+  <script type="application/ld+json">{{ ld | replace: "</", "<\/" }}</script>
 {% else %}
   {% seo %}
 {% endif %}

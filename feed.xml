@@ -47,7 +47,8 @@ sitemap: false
       it's safe HTML, and type="html" tells the reader to show that HTML.
       Images are added with full links so they show up in the reader too.
     {%- endcomment %}
-    <content type="html">{{ e.content | strip | escape | newline_to_br | xml_escape }}{% for img in e.images %}{% assign img_url = img.src | absolute_url %}{% assign img_alt = img.alt | escape %}{{ '<p><img src="' | append: img_url | append: '" alt="' | append: img_alt | append: '"></p>' | xml_escape }}{% endfor %}</content>
+    {%- capture text %}{% include entry-text.html entry=e %}{% endcapture %}
+    <content type="html">{{ text | escape | newline_to_br | xml_escape }}{% for img in e.images %}{% assign img_url = img.src | absolute_url %}{% assign img_alt = img.alt | escape %}{{ '<p><img src="' | append: img_url | append: '" alt="' | append: img_alt | append: '"></p>' | xml_escape }}{% endfor %}</content>
   </entry>
   {%- endfor %}
 </feed>

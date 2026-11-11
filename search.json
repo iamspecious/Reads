@@ -22,7 +22,7 @@ sitemap: false
     s = status                        tg = tags
 
   jsonify turns any value into safe JSON (quotes, line breaks and all).
-  Tripped me up: a hand-written "{{ value }}" between quotes breaks as soon
+  Tripped me up: a value hand-written between quote marks breaks as soon
   as a post contains a quote mark. Always use jsonify.
 {% endcomment %}
 [
@@ -32,7 +32,8 @@ sitemap: false
 {%- assign all_entries = site.entries | sort: "date" | reverse -%}
 {%- for e in all_entries -%}
 {%- assign parent = site.logs | where: "slug", e.log | first -%}
+{%- capture text -%}{% include entry-text.html entry=e %}{%- endcapture -%}
 {%- assign anchor = e.path | split: "/" | last | split: "." | first | prepend: "e-" -%}
-{"k":"e","u":{{ parent.url | append: "#" | append: anchor | relative_url | jsonify }},"g":{{ parent.title | default: e.log | jsonify }},"c":{{ e.chapter | jsonify }},"d":{{ e.date | date: "%-d %b %Y" | jsonify }},"x":{{ e.content | strip | jsonify }}}{% unless forloop.last %},{% endunless %}
+{"k":"e","u":{{ parent.url | append: "#" | append: anchor | relative_url | jsonify }},"g":{{ parent.title | default: e.log | jsonify }},"c":{{ e.chapter | jsonify }},"d":{{ e.date | date: "%-d %b %Y" | jsonify }},"x":{{ text | jsonify }}}{% unless forloop.last %},{% endunless %}
 {%- endfor -%}
 ]

@@ -1,0 +1,28 @@
+{%- comment -%}
+  entry-text.html — gives back an entry's text exactly as it was written.
+  Every page that shows post text gets it through here, so they all agree.
+
+  Why this exists: Jekyll treats two curly braces, or a curly brace followed
+  by a percent sign, as template code. A post that happens to contain them
+  (say, a curly-brace-percent "wow") would either break
+  the whole site build or show differently on different pages. So the
+  /new page and the importer wrap any such post in "raw" and "endraw"
+  markers (Liquid tags written with curly-brace-percent), which tell Jekyll "leave this alone".
+
+  Tripped me up: log pages get the text BEFORE Jekyll processes it, but the
+  home page, search and feed get it AFTER. So some pages saw the markers
+  and some didn't. The fix is to remove the markers here, every time.
+  The marker words are built from pieces (a curly brace, then "% raw %",
+  then a closing brace), because writing them out in full inside this file
+  would trigger them right here.
+  Tripped me up: Jekyll reads INSIDE comments too. Writing the two-curly-brace
+  sequence in this very comment broke the whole build, so no template
+  comment on this site may contain it.
+
+  Use it inside a capture, with entry=the entry, e.g. capture t, include
+  entry-text.html entry=e, endcapture. Then t holds the text.
+  The result is plain text, NOT made safe for HTML yet. Escape it where it's used.
+{%- endcomment -%}
+{%- assign open_raw = "{" | append: "% raw %" | append: "}" -%}
+{%- assign close_raw = "{" | append: "% endraw %" | append: "}" -%}
+{{- include.entry.content | remove: open_raw | remove: close_raw | strip -}}

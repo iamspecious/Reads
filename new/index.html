@@ -44,7 +44,13 @@ csp: true
   entry, so the write step can say "Last time: Ch 17, 'Nesta is still…'"
   and fill in the chapter for you.
 {% endcomment %}
-<script type="application/json" id="reads-data">
+{% comment %}
+  The data is built first, then every "</" becomes "<\/" (which means the same in JSON).
+  Why: a post containing "</script>" would otherwise end this block early and
+  break the page. Tripped me up: jsonify makes text safe for JSON, but not for
+  JSON sitting inside an HTML page. Those are two different rules.
+{% endcomment %}
+{%- capture reads_data -%}
 {
   "repo": {{ site.repository | jsonify }},
   "branch": {{ site.branch | jsonify }},
@@ -53,13 +59,15 @@ csp: true
   {%- for l in site.logs -%}
     {%- assign le = site.entries | where: "log", l.slug | sort: "date" -%}
     {%- assign last = le | last -%}
+    {%- capture last_text -%}{% if last %}{% include entry-text.html entry=last %}{% endif %}{%- endcapture -%}
     {%- assign last_ch = nil -%}
     {%- for x in le reversed -%}{%- if x.chapter -%}{%- assign last_ch = x.chapter -%}{%- break -%}{%- endif -%}{%- endfor -%}
-    {"slug":{{ l.slug | jsonify }},"title":{{ l.title | jsonify }},"creator":{{ l.creator | jsonify }},"type":{{ l.type | jsonify }},"status":{{ l.status | jsonify }},"started":{{ l.started | date: "%Y-%m-%d" | jsonify }},"count":{{ le.size }},"lastChapter":{{ last_ch | jsonify }},"lastText":{{ last.content | strip | truncate: 90 | jsonify }},"lastDate":{{ last.date | date: "%-d %b" | jsonify }}}{% unless forloop.last %},{% endunless %}
+    {"slug":{{ l.slug | jsonify }},"title":{{ l.title | jsonify }},"creator":{{ l.creator | jsonify }},"type":{{ l.type | jsonify }},"status":{{ l.status | jsonify }},"started":{{ l.started | date: "%Y-%m-%d" | jsonify }},"count":{{ le.size }},"lastChapter":{{ last_ch | jsonify }},"lastText":{{ last_text | truncate: 90 | jsonify }},"lastDate":{{ last.date | date: "%-d %b" | jsonify }}}{% unless forloop.last %},{% endunless %}
   {%- endfor -%}
   ]
 }
-</script>
+{%- endcapture %}
+<script type="application/json" id="reads-data">{{ reads_data | replace: "</", "<\/" }}</script>
 
 <h1>New entry</h1>
 
@@ -149,6 +157,7 @@ csp: true
       <a href="https://github.com/settings/personal-access-tokens/new" rel="noopener">GitHub → Settings → Fine-grained tokens</a>:
       <br>Repository access: <strong>Only select repositories → {{ site.repository }}</strong>
       <br>Permissions: <strong>Contents → Read and write</strong> (nothing else)
+      <br>Expiration: <strong>90 days</strong> (GitHub emails you before it runs out; then make a new one)
       <br>Then paste it here. It stays on this phone only.
     </p>
     <label for="key-input">Posting key</label>

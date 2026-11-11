@@ -95,7 +95,18 @@
   // always valid YAML. So a title with ":" or quotes can't break the file.
   function q(s) { return JSON.stringify(String(s)); }
 
-  // Chapter numbers are written bare (chapter: 12); anything else ("Prologue") in quotes.
+  // Jekyll treats "{{" and "{%" in a file as template code. A post containing
+  // them could break the whole site build. So such a post is wrapped in
+  // "raw" markers that tell Jekyll to leave it alone. The site removes the
+  // markers again when showing it (see _includes/entry-text.html), so what
+  // people see is exactly what you typed. Most posts never need this.
+  var RAW_OPEN = '{' + '% raw %' + '}', RAW_CLOSE = '{' + '% endraw %' + '}';
+  var ENDRAW_RE = /\{%-?\s*endraw/;
+  function liquidSafe(text) {
+    return (text.indexOf('{{') !== -1 || text.indexOf('{%') !== -1) ? RAW_OPEN + text + RAW_CLOSE : text;
+  }
+
+  // Chapter numbers are written bare (chapter: 12); anything else ("Prologue", "7-9") in quotes.
   function chapterValue(raw) {
     raw = raw.trim();
     if (!raw) return '';
@@ -206,7 +217,7 @@
     // File name: date, time, then the log. The time keeps it unique, and it
     // never changes, which matters because it becomes the share link.
     var filename = ymd(d) + '-' + hms(d).replace(/:/g, '') + '-' + current.slug + '.txt';
-    var body = $('text').value.replace(/\r\n?/g, '\n').replace(/\s+$/, '');
+    var body = liquidSafe($('text').value.replace(/\r\n?/g, '\n').replace(/\s+$/, ''));
     var content = '---\n' +
       'date: ' + ymd(d) + ' ' + hms(d) + ' ' + offsetFor(d) + '\n' +
       'log: ' + current.slug + '\n' +
@@ -269,6 +280,12 @@
   function post(ev) {
     ev.preventDefault();
     if (!$('text').value.trim()) { $('text').focus(); return; }
+    // The one thing the "raw" wrapper can't protect: the word that ends it.
+    // Nobody types this by accident, so we just ask for it to be removed.
+    if (ENDRAW_RE.test($('text').value)) {
+      $('post-status').textContent = 'The text contains “{% endraw”, which would break the site. Please remove it.';
+      return;
+    }
     var entry = buildEntry();
 
     // No key: the old way. GitHub's own screen, you tap Commit.
@@ -355,7 +372,13 @@
   function updateSlugHint() {
     var slug = slugify($('nl-title').value);
     var taken = allLogs().some(function (l) { return l.slug === slug; });
-    $('nl-slug').textContent = slug ? (taken ? 'There’s already a log called “' + slug + '”. Pick it from the list instead, or change the title.' : 'Its page will be /logs/' + slug + '/') : '';
+    // The page address is built from the title's plain letters and numbers.
+    // A title with none (say, only Japanese characters) can't make one, so we
+    // say so instead of silently refusing to go on.
+    $('nl-slug').textContent = !$('nl-title').value.trim() ? ''
+      : !slug ? 'Add at least one plain letter or number (A–Z, 0–9) to the title, so the log can have a web address.'
+      : taken ? 'There’s already a log called “' + slug + '”. Pick it from the list instead, or change the title.'
+      : 'Its page will be /logs/' + slug + '/';
     return taken ? '' : slug;
   }
 

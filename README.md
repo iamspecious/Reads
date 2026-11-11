@@ -28,12 +28,21 @@ So Post can save without opening GitHub, the page needs a posting key:
 1. Go to GitHub → Settings → Developer settings → **Fine-grained tokens** → Generate new token.
 2. **Repository access:** Only select repositories → `iamspecious/reads`.
 3. **Permissions:** Contents → **Read and write**. Nothing else.
-4. Pick an expiry (a year is fine) and copy the key.
+4. Set **Expiration** to 90 days (GitHub emails you before it runs out) and copy the key.
 5. On `/new`, tap **Turn on quick posting**, paste it and tap Save.
 
 The key stays only in that phone's browser. It isn't in the repo or on the site, and it can only change files in this one repo. If you lose the phone, delete the key on GitHub and it stops working straight away. Every change it makes is in the git history and can be undone.
 
 Without a key the page still works: Post opens GitHub's new-file screen with everything filled in, and you tap **Commit changes**.
+
+## Security, in short
+
+- **Only you can change the site.** You're the only person with write access to the repo. Anyone else who taps Post just gets GitHub's "fork this repository" screen, and their changes go nowhere unless you merge them.
+- **The posting key** lives only in your phone's browser. It can only change files in this one repo, and it expires after 90 days. Delete it on GitHub any time and it stops working straight away.
+- **`/new` has a strict browser safety rule:** only this site's own scripts can run there, and the page can only send data to GitHub's API.
+- **Nothing is ever overwritten by posting.** New files are only created. Marking a log finished checks it has the latest version first. Every change is in the git history and can be undone.
+- **Every push is checked.** The *Check* action tests the importer and validates every log and entry file. A red X on the Actions tab means a file needs fixing, and it says which one.
+- **Worth doing:** turn on two-factor sign-in for your GitHub account (Settings → Password and authentication). Your account is the only key to the site.
 
 ## Import a Bluesky thread
 
