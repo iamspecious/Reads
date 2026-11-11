@@ -1,0 +1,23 @@
+---
+layout: default
+---
+{% comment %}
+  index.html — the home page: the newest reactions from every log, mixed together.
+
+  Why only 50: the page stays small and quick on a phone. Older entries are
+  never lost, they live on their log pages. (GitHub Pages does support one
+  paging plugin, but it only pages blog "posts", not collections like ours.)
+{% endcomment %}
+{% assign latest = site.entries | sort: "date" | reverse %}
+
+<h1 class="visually-hidden">Latest entries</h1>
+<section class="feed" aria-label="Latest entries, newest first">
+  {% for entry in latest limit: 50 %}
+    {% include entry-card.html entry=entry show_log=true %}
+  {% else %}
+    <p class="empty">Nothing here yet.</p>
+  {% endfor %}
+</section>
+{% if latest.size > 50 %}
+  <p class="more"><a href="{{ '/logs/' | relative_url }}">Older entries live on each log page →</a></p>
+{% endif %}

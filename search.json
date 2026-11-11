@@ -1,0 +1,38 @@
+---
+layout: null
+sitemap: false
+---
+{% comment %}
+  search.json — the search index, built fresh every time the site builds.
+
+  Why it's built here: GitHub Pages has no server to ask questions to.
+  So we write every entry and log into one file at build time, and the
+  browser downloads it and searches it by itself (see assets/js/search.js).
+
+  Why the comments are only in this Liquid block: Liquid comments vanish
+  from the output, so the finished search.json stays pure data. JSON doesn't
+  allow comments at all, and a stray one would break the search.
+
+  Why the keys are short ("k", "x"...): this file grows with every entry,
+  and short keys keep it small for phones on slow data.
+    k = kind ("e" entry or "l" log)   u = link
+    x = text                          c = chapter
+    g = log title                     d = date
+    a = creator                       y = type
+    s = status                        tg = tags
+
+  jsonify turns any value into safe JSON (quotes, line breaks and all).
+  Tripped me up: a hand-written "{{ value }}" between quotes breaks as soon
+  as a post contains a quote mark. Always use jsonify.
+{% endcomment %}
+[
+{%- for log in site.logs -%}
+{"k":"l","u":{{ log.url | relative_url | jsonify }},"g":{{ log.title | jsonify }},"a":{{ log.creator | jsonify }},"y":{{ log.type | jsonify }},"s":{{ log.status | jsonify }},"tg":{{ log.tags | jsonify }}},
+{%- endfor -%}
+{%- assign all_entries = site.entries | sort: "date" | reverse -%}
+{%- for e in all_entries -%}
+{%- assign parent = site.logs | where: "slug", e.log | first -%}
+{%- assign anchor = e.path | split: "/" | last | split: "." | first | prepend: "e-" -%}
+{"k":"e","u":{{ parent.url | append: "#" | append: anchor | relative_url | jsonify }},"g":{{ parent.title | default: e.log | jsonify }},"c":{{ e.chapter | jsonify }},"d":{{ e.date | date: "%-d %b %Y" | jsonify }},"x":{{ e.content | strip | jsonify }}}{% unless forloop.last %},{% endunless %}
+{%- endfor -%}
+]

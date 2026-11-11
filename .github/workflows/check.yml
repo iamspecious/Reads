@@ -1,0 +1,28 @@
+# check.yml — runs the importer's tests on every push and pull request.
+#
+# Why: the importer talks to a live API we don't control. The tests use a
+# fake Bluesky (see tests/test_import_bluesky.py), so they check our own
+# logic (following only self-replies, the "fetch again" rule, skipping
+# re-imports, chapter spotting) without touching the network.
+# GitHub Pages builds the site itself, so this file doesn't build it.
+
+name: Check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run importer tests
+        run: python -m unittest discover -s tests -v

@@ -1,0 +1,27 @@
+---
+layout: default
+title: Search
+description: Search every reaction and every log.
+permalink: /search/
+---
+{% comment %}
+  search/index.html — the search page.
+
+  Why a plain <form> with a "q" box: if JavaScript fails, pressing Enter
+  still puts ?q=... in the address bar, and search.js picks it up when it
+  loads. It also means a search can be shared as a link.
+{% endcomment %}
+<h1>Search</h1>
+<form class="search-form" role="search" action="{{ '/search/' | relative_url }}" method="get">
+  <label for="q" class="visually-hidden">Search entries and logs</label>
+  <input type="search" id="q" name="q" placeholder="A word, a character, a chapter…" autocomplete="off" autofocus>
+</form>
+<p class="filter-count" id="search-status" aria-live="polite"></p>
+<div id="search-results" class="search-results"></div>
+<noscript><p class="empty">Search needs JavaScript. Every entry is still on its <a href="{{ '/logs/' | relative_url }}">log page</a>.</p></noscript>
+<script>
+  // The index's address, with /reads in front. Handed to search.js here
+  // because only Liquid knows the baseurl; plain .js files don't go through Liquid.
+  window.READS_INDEX = {{ '/search.json' | relative_url | jsonify }};
+</script>
+<script src="{{ '/assets/js/search.js' | relative_url }}" defer></script>

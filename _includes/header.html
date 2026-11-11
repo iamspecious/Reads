@@ -1,0 +1,21 @@
+{% comment %}
+  header.html — the dark bar at the top of every page.
+
+  Why it looks like this: it copies the portfolio's dark header (#343a40)
+  so the two sites feel like one family. The nav is a plain row of links
+  that wraps on small phones instead of hiding behind a menu button.
+  A menu button would need JavaScript; plain links work everywhere.
+{% endcomment %}
+<header class="site-header">
+  <div class="wrap">
+    <a class="site-title" href="{{ '/' | relative_url }}">{{ site.title }}</a>
+    <p class="site-tagline">{{ site.description }}</p>
+    <nav class="site-nav" aria-label="Main">
+      <a href="{{ '/' | relative_url }}"{% if page.url == "/" %} aria-current="page"{% endif %}>Latest</a>
+      <a href="{{ '/logs/' | relative_url }}"{% if page.url == "/logs/" %} aria-current="page"{% endif %}>All logs</a>
+      <a href="{{ '/search/' | relative_url }}"{% if page.url == "/search/" %} aria-current="page"{% endif %}>Search</a>
+      <a href="{{ '/new/' | relative_url }}"{% if page.url == "/new/" %} aria-current="page"{% endif %}>New</a>
+      <a href="{{ '/feed.xml' | relative_url }}">RSS</a>
+    </nav>
+  </div>
+</header>

@@ -1,0 +1,11 @@
+{% comment %}
+  footer.html — the small print at the bottom.
+  Why: a link home to the portfolio, and a plain promise that nothing is tracked,
+  so readers don't have to guess.
+{% endcomment %}
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Written live by <a href="https://iamspecious.github.io/portfolio/">{{ site.author }}</a>. No tracking, no cookies, no ads.</p>
+    <p><a href="{{ '/feed.xml' | relative_url }}">RSS feed</a> · <a href="https://github.com/{{ site.repository }}">Source on GitHub</a></p>
+  </div>
+</footer>

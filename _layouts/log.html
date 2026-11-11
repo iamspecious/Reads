@@ -1,0 +1,42 @@
+---
+layout: default
+---
+{% comment %}
+  log.html — the page for one book, game or show.
+
+  Why oldest first: a log page should read like the journey itself.
+  You start at chapter 1 and scroll forward in time, the way you read the book.
+  (The home page does the opposite, newest first, because there you want
+  to see what's new.)
+{% endcomment %}
+{% assign log_entries = site.entries | where: "log", page.slug | sort: "date" %}
+
+<section class="log-head">
+  <p class="log-type">{{ page.type | capitalize }}</p>
+  <h1>{{ page.title }}</h1>
+  <p class="log-creator">by {{ page.creator }}</p>
+  {% comment %}
+    A <dl> is a list of "label: value" pairs. Screen readers announce it that way,
+    which is why it's used instead of loose text.
+  {% endcomment %}
+  <dl class="log-facts">
+    <div><dt>Status</dt><dd><span class="badge badge-status status-{{ page.status }}">{{ page.status }}</span></dd></div>
+    {% if page.started %}<div><dt>Started</dt><dd><time datetime="{{ page.started | date: '%Y-%m-%d' }}">{{ page.started | date: "%-d %b %Y" }}</time></dd></div>{% endif %}
+    {% if page.finished %}<div><dt>Finished</dt><dd><time datetime="{{ page.finished | date: '%Y-%m-%d' }}">{{ page.finished | date: "%-d %b %Y" }}</time></dd></div>{% endif %}
+    <div><dt>Entries</dt><dd>{{ log_entries.size }}</dd></div>
+  </dl>
+  {% if page.tags.size > 0 %}
+    <p class="log-tags">{% for t in page.tags %}<span class="badge badge-tag">{{ t }}</span>{% endfor %}</p>
+  {% endif %}
+  {% comment %} Anything written in the body of the log file (an optional note) shows here. {% endcomment %}
+  {% assign note = content | strip %}
+  {% if note != "" %}<div class="log-note">{{ content }}</div>{% endif %}
+</section>
+
+<section class="feed" aria-label="Entries, oldest first">
+  {% for entry in log_entries %}
+    {% include entry-card.html entry=entry show_log=false %}
+  {% else %}
+    <p class="empty">No entries yet.</p>
+  {% endfor %}
+</section>

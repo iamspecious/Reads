@@ -1,0 +1,92 @@
+# import-bluesky.yml — the "Import Bluesky thread" button on GitHub.
+#
+# How to use: on GitHub, open Actions → "Import Bluesky thread" → Run workflow.
+# Paste the link to the first post, type the log slug, and press Run.
+# It runs scripts/import_bluesky.py on GitHub's computers and commits any
+# new entries and images back to the branch you picked.
+#
+# Why it runs on GitHub and not on your computer: you post from your phone,
+# so there may be no computer around. GitHub gives every repo free minutes
+# for jobs like this one.
+
+name: Import Bluesky thread
+
+# workflow_dispatch = "only runs when you press the button". Nothing runs
+# on a timer, so nothing happens behind your back.
+on:
+  workflow_dispatch:
+    inputs:
+      thread_url:
+        description: "Link to the first post of the thread (https://bsky.app/profile/…/post/…)"
+        required: true
+        type: string
+      log_slug:
+        description: "Log slug (the file name in _logs/ without .md), e.g. a-court-of-silver-flames"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run: show what would be imported, but don't commit anything"
+        required: false
+        type: boolean
+        default: false
+
+# The job needs to push a commit, so it asks for write access to the repo's
+# files. Nothing else (no issues, no secrets, no packages).
+permissions:
+  contents: write
+
+# Only one import at a time. If you press Run twice, the second waits, so
+# the two can't both write the same posts and fight over the push.
+concurrency:
+  group: import-bluesky
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Get the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The inputs are passed in as environment variables, NOT pasted
+      # straight into the command line.
+      # Why: if someone typed something sneaky like  "; rm -rf ."  into a box,
+      # pasting it into the command would run it. As an environment
+      # variable it's just text.
+      - name: Import the thread
+        env:
+          THREAD_URL: ${{ inputs.thread_url }}
+          LOG_SLUG: ${{ inputs.log_slug }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            python scripts/import_bluesky.py "$THREAD_URL" "$LOG_SLUG" --dry-run
+          else
+            python scripts/import_bluesky.py "$THREAD_URL" "$LOG_SLUG"
+          fi
+
+      # Commit only if something actually changed. A re-run on a thread with
+      # no new posts finishes quietly instead of failing on an empty commit.
+      # The commit is made by the GitHub Actions bot, so it's clear in the
+      # history which entries came from an import.
+      - name: Commit new entries
+        if: ${{ !inputs.dry_run }}
+        env:
+          LOG_SLUG: ${{ inputs.log_slug }}
+        run: |
+          git add _entries assets/images/entries
+          if git diff --cached --quiet; then
+            echo "Nothing new to commit."
+            exit 0
+          fi
+          count=$(git diff --cached --name-only --diff-filter=A -- _entries | wc -l)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Import ${count} Bluesky post(s) into ${LOG_SLUG}"
+          git push

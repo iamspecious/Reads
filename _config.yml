@@ -1,0 +1,74 @@
+# _config.yml — the settings file Jekyll reads before it builds the site.
+# Jekyll is the tool GitHub Pages uses to turn these files into web pages.
+
+# The name and blurb show up in the header, in search engines, and in the feed.
+title: Reads
+description: Live reading and playing logs. Short reactions, chapter by chapter, as they happen.
+author: Specious Coda Bishop
+
+# The site lives at iamspecious.github.io/reads, not at the root of the domain.
+# "url" is the domain. "baseurl" is the folder after it.
+# Every link in the templates goes through the relative_url filter,
+# which glues baseurl on the front. Without it, links would point to
+# iamspecious.github.io/logs/... and break.
+url: https://iamspecious.github.io
+baseurl: /reads
+
+# The GitHub repo, used by the /new page to build the "new file" link
+# and by the footer to link to the source.
+repository: iamspecious/reads
+branch: main
+
+# Times are shown in this time zone. The Bluesky importer also reads this
+# line, so a post made at 23:30 in Berlin lands on the right day.
+# Change it here if you move, and both the site and the importer follow.
+timezone: Europe/Berlin
+
+# Only plugins that GitHub Pages allows. Anything else would be ignored
+# by GitHub's build, so we stick to these three.
+#  - jekyll-feed: adds the feed link tag to every page (see feed.xml for why
+#    the feed file itself is hand-written).
+#  - jekyll-seo-tag: writes the page title, description and preview tags.
+#  - jekyll-sitemap: writes sitemap.xml so search engines find every page.
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# Collections are groups of files that Jekyll treats as a set.
+collections:
+  # One file per book, game or show. Each one gets its own page,
+  # so output is true. The page lives at /reads/logs/<file name>/.
+  logs:
+    output: true
+    permalink: /logs/:name/
+  # One file per post. Entries do NOT get their own pages (output: false).
+  # They only show up inside the home feed and the log page, each with
+  # an anchor link (#...) so a single reaction can still be shared.
+  # Fewer pages means a faster build and a cleaner sitemap.
+  entries:
+    output: false
+
+# Front matter defaults: settings every file in a folder gets for free,
+# so each file doesn't have to repeat them.
+defaults:
+  - scope:
+      path: ""
+      type: logs
+    values:
+      layout: log
+
+# Markdown settings. kramdown is the Markdown engine GitHub Pages uses.
+# Only log notes and the README use Markdown. Entries are plain text on purpose
+# (the "why" is at the top of scripts/import_bluesky.py).
+markdown: kramdown
+
+# Files Jekyll should not copy into the built site.
+# The scripts and tests are tools for making the site, not part of it.
+exclude:
+  - README.md
+  - scripts/
+  - tests/
+  - Gemfile
+  - Gemfile.lock
+  - vendor/

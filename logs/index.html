@@ -1,0 +1,58 @@
+---
+layout: default
+title: All logs
+description: Every book, game and show with a live log, filterable by type and status.
+permalink: /logs/
+---
+{% comment %}
+  logs/index.html — a list of every log, with filter buttons.
+
+  Why it works this way: the full list is always in the page. The filter
+  buttons only hide cards. So if JavaScript is off or fails, you still see
+  everything. The buttons start hidden and logs-filter.js shows them,
+  so nobody taps a button that does nothing.
+
+  Sort order: most recently started first, because that's usually what
+  you're in the middle of.
+{% endcomment %}
+{% assign logs = site.logs | sort: "started" | reverse %}
+
+<h1>All logs</h1>
+
+<form class="filters" id="log-filters" hidden aria-label="Filter logs">
+  <fieldset>
+    <legend>Type</legend>
+    <label><input type="radio" name="type" value="" checked> All</label>
+    <label><input type="radio" name="type" value="book"> Books</label>
+    <label><input type="radio" name="type" value="game"> Games</label>
+    <label><input type="radio" name="type" value="show"> Shows</label>
+  </fieldset>
+  <fieldset>
+    <legend>Status</legend>
+    <label><input type="radio" name="status" value="" checked> All</label>
+    <label><input type="radio" name="status" value="reading"> Reading</label>
+    <label><input type="radio" name="status" value="finished"> Finished</label>
+    <label><input type="radio" name="status" value="dropped"> Dropped</label>
+  </fieldset>
+</form>
+{% comment %} aria-live makes screen readers read out the new count when a filter changes. {% endcomment %}
+<p class="filter-count" id="log-count" aria-live="polite">{{ logs.size }} {% if logs.size == 1 %}log{% else %}logs{% endif %}</p>
+
+<ul class="log-list">
+  {% for log in logs %}
+    {% assign n = site.entries | where: "log", log.slug | size %}
+    <li class="log-card" data-type="{{ log.type }}" data-status="{{ log.status }}">
+      <a class="log-card-title" href="{{ log.url | relative_url }}">{{ log.title }}</a>
+      <span class="log-card-creator">{{ log.creator }}</span>
+      <span class="log-card-meta">
+        <span class="badge badge-type">{{ log.type }}</span>
+        <span class="badge badge-status status-{{ log.status }}">{{ log.status }}</span>
+        {{ n }} {% if n == 1 %}entry{% else %}entries{% endif %}
+        {% if log.started %}· since {{ log.started | date: "%b %Y" }}{% endif %}
+      </span>
+    </li>
+  {% endfor %}
+</ul>
+<p class="empty" id="log-none" hidden>No logs match those filters.</p>
+
+<script src="{{ '/assets/js/logs-filter.js' | relative_url }}" defer></script>

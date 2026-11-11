@@ -1,0 +1,71 @@
+{% comment %}
+  entry-card.html — one reaction, drawn as a small card.
+
+  How to use it: include entry-card.html with entry=some_entry show_log=true
+    entry     the entry file to show
+    show_log  true on the home feed (so you know which book it's from),
+              false on a log page (where you already know)
+
+  Why it looks like this: it reuses the portfolio's "devlog" card style.
+  Dark card, gold timestamp, purple badge. Same family, new job.
+{% endcomment %}
+{% assign e = include.entry %}
+
+{% comment %}
+  The anchor is the entry's file name without ".txt".
+  Why the file name: it never changes once the file exists. A number like
+  "entry 5" would shift whenever an older entry got added, and old shared
+  links would point at the wrong reaction.
+  "e-" goes in front because an HTML id should start with a letter, and the
+  file names start with a year.
+{% endcomment %}
+{% assign file_name = e.path | split: "/" | last %}
+{% assign anchor = file_name | split: "." | first | prepend: "e-" %}
+{% assign parent = site.logs | where: "slug", e.log | first %}
+{% if parent %}
+  {% assign entry_link = parent.url | append: "#" | append: anchor | relative_url %}
+{% else %}
+  {% assign entry_link = "#" | append: anchor %}
+{% endif %}
+
+<article class="entry" id="{{ anchor }}">
+  <header class="entry-meta">
+    {% comment %}
+      The timestamp IS the share link. Tapping it jumps to this exact reaction
+      on its log page, so you can copy the address bar and send it.
+      <time> carries the full machine date so search engines and feed tools
+      can read it, while people see the short version.
+    {% endcomment %}
+    <a class="entry-time" href="{{ entry_link }}" title="Link to this reaction">
+      <time datetime="{{ e.date | date_to_xmlschema }}">{{ e.date | date: "%-d %b %Y · %H:%M" }}</time>
+    </a>
+    {% if include.show_log and parent %}
+      <a class="badge badge-log" href="{{ parent.url | relative_url }}">{{ parent.title }}</a>
+    {% elsif include.show_log %}
+      {% comment %} If the log file is missing we still show the slug, so the entry isn't silently orphaned. {% endcomment %}
+      <span class="badge badge-log">{{ e.log }}</span>
+    {% endif %}
+    {% if e.chapter %}<span class="badge badge-chapter">Ch {{ e.chapter }}</span>{% endif %}
+  </header>
+
+  {% comment %}
+    The post text is shown exactly as written. It is escaped (so a stray "<"
+    can't break the page) and each line break becomes a real line break.
+    We do NOT run it through Markdown: on Bluesky, "#ACOSF" is a hashtag,
+    but Markdown would turn it into a giant heading.
+  {% endcomment %}
+  <div class="entry-text">{{ e.content | strip | escape | newline_to_br }}</div>
+
+  {% if e.images %}
+    <div class="entry-images">
+      {% for img in e.images %}
+        {% comment %} loading="lazy" means images below the fold don't load until you scroll. Faster on mobile data. {% endcomment %}
+        <img src="{{ img.src | relative_url }}" alt="{{ img.alt | escape }}" loading="lazy" decoding="async">
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if e.source_url %}
+    <a class="entry-source" href="{{ e.source_url }}" rel="noopener">on Bluesky ↗</a>
+  {% endif %}
+</article>
