@@ -7,6 +7,15 @@
   No web fonts either: the phone's own font shows up instantly and costs nothing.
 {% endcomment %}
 <meta charset="utf-8">
+{% comment %}
+  The safety rule for pages that handle the posting key (only /new sets csp: true).
+  It must come first in <head>, before anything it's meant to guard.
+    script-src 'self'          scripts only from this site, none written inside the page
+    connect-src api.github.com the page may only send data to GitHub's API
+    form-action 'none'         forms can't be sent anywhere by the browser itself
+    base-uri 'none'            nobody can quietly change where relative links point
+{% endcomment %}
+{% if page.csp %}<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://api.github.com; form-action 'none'; base-uri 'none'; object-src 'none'">{% endif %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 {% comment %} Pages that are tools, not reading (like /new), set noindex: true to stay out of search results. {% endcomment %}
 {% if page.noindex %}<meta name="robots" content="noindex">{% endif %}

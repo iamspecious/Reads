@@ -35,6 +35,12 @@
    so nothing pokes out past the edge of a narrow phone screen. */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Anything marked hidden stays hidden, even if another rule gives it
+   display: flex. Tripped me up: without this, the posting-key form on /new
+   showed up when it was meant to be tucked away, because ".new-form" sets
+   display: flex and that quietly beats the browser's own [hidden] rule. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--page);
@@ -181,6 +187,42 @@ mark { background: #f3e3a8; color: inherit; border-radius: 2px; }
 .button-quiet { margin-top: 4px; background: transparent; color: var(--muted); font-weight: 400; font-size: 0.85rem; }
 .preview { margin-top: 18px; }
 .preview pre { background: var(--card); color: var(--card-ink); padding: 12px; border-radius: 8px; font: 0.78rem/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ── /new: the one-page posting flow ── */
+.step-q { font-size: 1.1rem; margin: 4px 0 10px; }
+/* Each book is one big button, easy to hit with a thumb. */
+.pick-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.pick {
+  display: flex; flex-direction: column; gap: 2px; text-align: left; width: 100%;
+  padding: 12px 14px; border: 1px solid #e3e0ee; border-radius: 8px; background: #fff;
+  font: inherit; color: var(--ink); cursor: pointer;
+}
+.pick:active, .pick:focus-visible { border-color: var(--purple-deep); outline: none; box-shadow: 0 0 0 3px rgba(110, 64, 201, 0.2); }
+.pick-title { font-weight: 700; }
+.pick-sub { font-size: 0.8rem; color: var(--muted); }
+/* The "you're writing in…" box at the top of the write step, in the card colours. */
+.chosen { background: var(--card); color: var(--card-ink); border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; }
+.chosen-title { margin: 0; font-weight: 700; }
+.chosen .hint { color: var(--card-muted); overflow-wrap: anywhere; }
+.chosen .link-button { color: var(--gold); }
+/* Buttons that look like links, for small "Change"/"Forget" actions. */
+.link-button { background: none; border: 0; padding: 4px 0; font: inherit; font-size: 0.85rem; color: var(--purple-deep); text-decoration: underline; cursor: pointer; }
+.when { margin-top: 8px; font-size: 0.85rem; color: var(--muted); }
+.when summary { cursor: pointer; padding: 4px 0; }
+.status { min-height: 1.2em; margin: 6px 0 0; font-size: 0.88rem; }
+.finish-link { margin-top: 10px; }
+.key-box { margin-top: 28px; padding-top: 12px; border-top: 1px solid #e3e0ee; }
+.button:disabled { opacity: 0.6; }
+h2 { line-height: 1.3; }
+
+/* ── Home: "Currently reading" strip ──
+   Kept deliberately simple for now; the look can be redesigned later. */
+.now-reading { margin-bottom: 16px; }
+.now-reading h2 { font-family: var(--mono); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 6px; }
+.now-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.now-list a { display: block; padding: 8px 12px; background: #fff; border: 1px solid #e3e0ee; border-radius: 8px; text-decoration: none; color: var(--ink); }
+.now-list strong { display: block; font-size: 0.95rem; }
+.now-list span { font-size: 0.75rem; color: var(--muted); }
 
 .empty, .more { color: var(--muted); }
 

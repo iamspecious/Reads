@@ -13,12 +13,27 @@ It's a plain Jekyll site built by GitHub Pages. No server, no paid services, no 
 
 ## Post from your phone
 
-1. Open **https://iamspecious.github.io/reads/new/** (add it to your home screen).
-2. Pick the log, type the chapter if you like, write your reaction.
-3. Tap **Open in GitHub to commit**. GitHub opens with the file already filled in.
-4. Tap **Commit changes**. The site updates in a minute or two.
+Open **https://iamspecious.github.io/reads/new/** (add it to your home screen). It's one page:
 
-You need to be logged in to GitHub in that browser (or the GitHub app). Your draft stays on the phone until you tap *Clear draft*, in case GitHub doesn't open.
+1. **What are you reading?** Tap the book. Books marked `reading` are at the top.
+2. Not there? Tap **Something else…** and pick another log, or **Start a new book, game or show** (title, author/studio, type).
+3. Write your reaction. The chapter is filled in with the last one you logged. Tap **Post**. It's on the site a minute or two later.
+
+When you finish a book, tap **Finished this one?** on the write screen to mark it finished.
+
+### Quick posting (one-time setup)
+
+So Post can save without opening GitHub, the page needs a posting key:
+
+1. Go to GitHub → Settings → Developer settings → **Fine-grained tokens** → Generate new token.
+2. **Repository access:** Only select repositories → `iamspecious/reads`.
+3. **Permissions:** Contents → **Read and write**. Nothing else.
+4. Pick an expiry (a year is fine) and copy the key.
+5. On `/new`, tap **Turn on quick posting**, paste it and tap Save.
+
+The key stays only in that phone's browser. It isn't in the repo or on the site, and it can only change files in this one repo. If you lose the phone, delete the key on GitHub and it stops working straight away. Every change it makes is in the git history and can be undone.
+
+Without a key the page still works: Post opens GitHub's new-file screen with everything filled in, and you tap **Commit changes**.
 
 ## Import a Bluesky thread
 
@@ -34,7 +49,7 @@ The script is `scripts/import_bluesky.py` (Python, no extra packages). Its tests
 
 ## Start a new log
 
-Add a file to `_logs/`. The file name becomes the slug and the web address (`/reads/logs/<slug>/`). You can do this on github.com: open `_logs`, tap **Add file → Create new file**, name it e.g. `hades-ii.md`, and paste:
+The easy way is **Start a new book** on `/new`. To do it by hand, add a file to `_logs/`. The file name becomes the slug and the web address (`/reads/logs/<slug>/`). You can do this on github.com: open `_logs`, tap **Add file → Create new file**, name it e.g. `hades-ii.md`, and paste:
 
 ```yaml
 ---
