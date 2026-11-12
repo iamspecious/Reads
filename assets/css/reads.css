@@ -273,6 +273,8 @@ mark { background: color-mix(in srgb, #e06a95 25%, transparent); color: inherit;
 .when summary { cursor: pointer; padding: 4px 0; }
 #post-status { min-height: 1.2em; margin: 6px 0 0; font-size: 0.9rem; }
 .finish-link { margin-top: 14px; }
+.sync-link { margin: 22px 0 0; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.sync-link a { font-weight: 600; text-decoration: none; }
 .finish-link a { color: var(--muted); }
 .finish-link code { font-size: 0.85em; }
 .last-sent { background: var(--chip-bg); color: var(--chip-ink); padding: 10px 14px; border-radius: 10px; margin: 16px 0 4px; }
