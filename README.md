@@ -42,7 +42,7 @@ The page stores no keys or passwords. Saving always happens on GitHub, with your
 If a book's log has a `bluesky_thread:` line (a link to the first post of your thread), new posts you add to that thread are copied to the site automatically, checked every 30 minutes (at :17 and :47 past the hour). Only books marked `status: reading` are synced. Once you mark a book finished, syncing stops.
 
 - **Starting a book on Bluesky:** paste the first post's link in the *Bluesky thread* box when you start the log on `/new`, or add `bluesky_thread: <link>` to the log file.
-- **Want it now?** Actions → *Sync Bluesky threads* → **Run workflow**.
+- **Want it now?** On `/new`, tap **Sync from Bluesky** (or go to Actions → *Sync Bluesky threads*), then **Run workflow**.
 - **Posting in both places?** If you post the same thing on Bluesky *and* on `/new`, it will show up twice. Pick one place per post.
 - If the Actions tab ever says the timed workflow was paused (GitHub does that after 60 days without any activity), press the button there to turn it back on.
 

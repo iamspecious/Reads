@@ -88,6 +88,20 @@ csp: true
     <div id="other-list" class="pick-list"></div>
     <button type="button" class="button" id="start-new">＋ Start a new book, game or show</button>
   </div>
+  {% comment %}
+    One-tap Bluesky sync. GitHub's timer for the automatic sync has been
+    unreliable (see .github/workflows/bluesky-sync.yml), so this opens the
+    sync's page on GitHub, where "Run workflow" pulls in new Bluesky posts
+    straight away. Only shown when at least one book you're reading has a
+    Bluesky thread, since otherwise there's nothing to sync.
+  {% endcomment %}
+  {% assign synced = site.logs | where: "status", "reading" | where_exp: "l", "l.bluesky_thread" %}
+  {% if synced.size > 0 %}
+  <p class="sync-link">
+    <a href="https://github.com/{{ site.repository }}/actions/workflows/bluesky-sync.yml" rel="noopener">Sync from Bluesky ↗</a>
+    <span class="hint">Opens GitHub. Tap <strong>Run workflow</strong>, then <strong>Run workflow</strong> again. New posts show up a minute or two later.</span>
+  </p>
+  {% endif %}
 </section>
 
 {% comment %} Step 2 (only for something new): describe the new log. {% endcomment %}
