@@ -1,4 +1,4 @@
-# sync-bluesky.yml — checks your Bluesky threads every 30 minutes and adds
+# bluesky-sync.yml — checks your Bluesky threads every 30 minutes and adds
 # any new posts to the site.
 #
 # Which threads: every log in _logs/ that is "status: reading" and has a
@@ -16,6 +16,14 @@
 # delayed and can be dropped entirely, and that's what happened: in the
 # first 4 hours not one timed run started. Odd minutes like :17 and :47
 # are quiet, so the runs actually happen.
+#
+# Why this file is called bluesky-sync.yml (it used to be sync-bluesky.yml):
+# Tripped me up again: even at :17 and :47, and after switching the workflow
+# off and on in the Actions tab, GitHub never started a single timed run
+# under the old file name (hand-started runs always worked). GitHub ties a
+# workflow's timer to its file, so a new file name makes it register a
+# brand-new workflow with a fresh timer. If timed runs ever stop again,
+# this is the thing to try.
 #
 # Note: GitHub pauses timed workflows on a repo that has had no activity for
 # 60 days. If that ever happens, the Actions tab shows a button to turn it
