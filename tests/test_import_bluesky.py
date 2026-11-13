@@ -47,11 +47,22 @@ class FakeBluesky:
         self.depth = depth
         self.calls = 0
 
+    chain_extra_branch = None  # optional (index in chain, [posts]) for a second, deep branch of mine
+
+    def branch_node(self, posts, j, levels_left):
+        n = {"$type": "app.bsky.feed.defs#threadViewPost", "post": posts[j]}
+        if levels_left == 0:
+            return n
+        n["replies"] = [self.branch_node(posts, j + 1, levels_left - 1)] if j + 1 < len(posts) else []
+        return n
+
     def node(self, i, levels_left):
         n = {"$type": "app.bsky.feed.defs#threadViewPost", "post": self.chain[i]}
         if levels_left == 0:
             return n  # cut off: no "replies" key at all, just like the real API
         replies = [{"$type": "app.bsky.feed.defs#threadViewPost", "post": r} for r in self.extra.get(i, [])]
+        if self.chain_extra_branch and self.chain_extra_branch[0] == i:
+            replies.append(self.branch_node(self.chain_extra_branch[1], 0, levels_left - 1))
         if i + 1 < len(self.chain):
             replies.append(self.node(i + 1, levels_left - 1))
         n["replies"] = replies
@@ -62,8 +73,20 @@ class FakeBluesky:
         if method == "com.atproto.identity.resolveHandle":
             return {"did": ME}
         uri = params["uri"]
-        i = next(k for k, p in enumerate(self.chain) if p["uri"] == uri)
-        return {"thread": self.node(i, self.depth)}
+        for k, p in enumerate(self.chain):
+            if p["uri"] == uri:
+                return {"thread": self.node(k, self.depth)}
+        if self.chain_extra_branch:
+            posts = self.chain_extra_branch[1]
+            for j, p in enumerate(posts):
+                if p["uri"] == uri:
+                    return {"thread": self.branch_node(posts, j, self.depth)}
+        # The side-branch posts from setUp have no replies of their own.
+        for kids in self.extra.values():
+            for p in kids:
+                if p["uri"] == uri:
+                    return {"thread": {"$type": "app.bsky.feed.defs#threadViewPost", "post": p, "replies": []}}
+        raise AssertionError(f"unknown uri {uri}")
 
 
 class ImportTests(unittest.TestCase):
@@ -118,11 +141,30 @@ class ImportTests(unittest.TestCase):
     def test_imports_whole_chain_past_the_depth_limit(self):
         self.run_import()
         files = self.entries()
-        self.assertEqual(len(files), 15)
+        self.assertEqual(len(files), 16)  # 15 in the main chain + my side branch
         self.assertGreater(self.fake.calls, 2, "should have fetched again after the cut-off")
         all_text = "".join(f.read_text() for f in files)
         self.assertNotIn("stranger", all_text)
-        self.assertNotIn("late side branch", all_text)
+
+    def test_every_branch_of_my_replies_is_followed(self):
+        # The side branch under post 5 is mine, so it's included too.
+        self.run_import()
+        all_text = "".join(f.read_text() for f in self.entries())
+        self.assertIn("late side branch", all_text)
+        self.assertEqual(len(self.entries()), 16)
+
+    def test_new_posts_on_a_later_branch_are_found(self):
+        # Like the real thread: I replied to an older post again and carried
+        # on from there. The new chain hangs off post 3 and is 8 posts long,
+        # deeper than the fake depth of 4, so "fetch again" is needed too.
+        branch = [post(300 + n, text=f"branch post {n}") for n in range(8)]
+        for n, p in enumerate(branch):
+            p["record"]["createdAt"] = f"2026-11-12T0{n}:00:00.000Z"
+        self.fake.chain_extra_branch = (3, branch)
+        self.run_import()
+        all_text = "".join(f.read_text() for f in self.entries())
+        for n in range(8):
+            self.assertIn(f"branch post {n}", all_text)
 
     def test_rerun_skips_everything(self):
         self.run_import()
@@ -134,10 +176,10 @@ class ImportTests(unittest.TestCase):
         full = list(self.chain)
         self.fake.chain = full[:10]
         self.run_import()
-        self.assertEqual(len(self.entries()), 10)
+        self.assertEqual(len(self.entries()), 11)  # 10 in the chain + my side branch under post 5
         self.fake.chain = full
         self.run_import()
-        self.assertEqual(len(self.entries()), 15)
+        self.assertEqual(len(self.entries()), 16)
 
     def test_chapter_detection(self):
         self.assertEqual(imp.find_chapter("Ch 12 is wild"), 12)
@@ -176,7 +218,7 @@ class ImportTests(unittest.TestCase):
         by_rkey = {f.stem.rsplit("-", 1)[-1]: f.read_text() for f in self.entries()}
         self.assertTrue(by_rkey["rk009"].endswith("---\n" + imp.RAW_OPEN + "Feyre {{ is }} here {% wow" + imp.RAW_CLOSE + "\n"))
         self.assertNotIn("rk010", by_rkey)
-        self.assertEqual(len(by_rkey), 14)
+        self.assertEqual(len(by_rkey), 15)
 
     def test_range_is_written_quoted(self):
         self.chain[4]["record"]["text"] = "Chapter 7 - 9 : wow"
@@ -241,7 +283,7 @@ class ImportTests(unittest.TestCase):
         # And a third run changes nothing.
         self.run_import()
         self.assertEqual(self.entry("rk007"), after)
-        self.assertEqual(len(self.entries()), 15)
+        self.assertEqual(len(self.entries()), 16)
 
     def test_unknown_log_is_refused(self):
         with self.assertRaises(SystemExit):
