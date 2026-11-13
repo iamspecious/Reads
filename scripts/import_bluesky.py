@@ -341,6 +341,17 @@ def post_media(post, did):
             # label in front is dropped because screen readers don't need it.
             alt = ext.get("description") or ext.get("title") or ""
             alt = re.sub(r"^\s*alt:\s*", "", alt, flags=re.IGNORECASE)
+            # Klipy keeps an MP4 copy of every GIF right next to it, named
+            # by the "mp4=" code in the link. It looks the same and is far
+            # smaller (one GIF was 20 MB, its MP4 0.5 MB), so we take that
+            # and show it as a silent looping video. Bluesky does the same.
+            # Tripped me up: the MP4 is NOT the GIF's name with .mp4 on the
+            # end; it's named by the mp4= code. Checked by asking Klipy for
+            # each candidate address.
+            mp4 = urllib.parse.parse_qs(parsed.query).get("mp4", [""])[0]
+            if parsed.hostname == "static.klipy.com" and re.fullmatch(r"[A-Za-z0-9]{4,64}", mp4):
+                folder = parsed.path.rsplit("/", 1)[0]
+                return [{"kind": "video", "url": f"https://static.klipy.com{folder}/{mp4}.mp4", "alt": alt, "gif": True}]
             return [{"kind": "image", "url": uri, "alt": alt, "gif": True}]
         return []  # an ordinary link card: nothing to copy
 

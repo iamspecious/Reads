@@ -95,6 +95,8 @@ class ImportTests(unittest.TestCase):
             self.downloads.append(url)
             if url.startswith("https://plc.directory/"):
                 return {"service": [{"id": "#atproto_pds", "serviceEndpoint": "https://pds.test"}]}
+            if url.startswith("https://static.klipy.com/") and url.endswith(".mp4"):
+                return b"\x00\x00\x00\x18ftypmp42fakeklipy", "video/mp4"
             if url.startswith(("https://media.tenor.com/", "https://static.klipy.com/")):
                 return b"GIF89afakegif", "image/gif"
             if url.startswith("https://pds.test/xrpc/com.atproto.sync.getBlob"):
@@ -204,8 +206,10 @@ class ImportTests(unittest.TestCase):
             "description": "ALT: Barbie Doll's Surprised Disgusted Look"}}
         self.run_import()
         text = self.entry("rk005")
-        self.assertIn('  - src: "/assets/images/entries/rk005-1.gif"', text)
-        self.assertIn('    alt: "Barbie Doll\'s Surprised Disgusted Look"', text)
+        # Saved as Klipy's small MP4 copy, played like a GIF.
+        self.assertIn('videos:\n  - src: "/assets/images/entries/rk005-1.mp4"\n    alt: "Barbie Doll\'s Surprised Disgusted Look"\n    gif: true', text)
+        self.assertIn("https://static.klipy.com/ii/935d7ab9d8c6202580a668421940ec81/b2/ae/2NCQAYdW.mp4", self.downloads)
+        self.assertFalse(any(u.endswith("377VY4PU.gif?hh=455&ww=498&mp4=2NCQAYdW&webm=6BxOUMBNXH6HuOD") for u in self.downloads))
 
     def test_ordinary_link_cards_are_not_downloaded(self):
         self.chain[5]["embed"] = {"$type": "app.bsky.embed.external#view", "external": {
