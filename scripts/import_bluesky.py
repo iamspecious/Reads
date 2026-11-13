@@ -11,10 +11,13 @@ WHAT IT DOES, STEP BY STEP
     No login is needed, because the posts are public.
  4. It walks down the thread, only stepping into replies that YOU wrote
     to yourself. Other people's replies are skipped.
- 5. For each post, it downloads any images into this repo and writes one
-    file in _entries/ with the original time and the link to the post.
+ 5. For each post, it downloads any pictures, GIFs and videos into this
+    repo and writes one file in _entries/ with the original time and the
+    link to the post.
  6. It skips posts that are already in _entries/, so you can run it again
     on a thread that is still growing and only the new posts get added.
+    (One exception: if an older entry is missing a GIF, picture or video
+    that its post has, the media is added to it. Its text is never changed.)
 
 HOW TO RUN IT
  It is meant to run on GitHub, through the "Import Bluesky thread" action
@@ -94,6 +97,21 @@ RKEY_IN_URL_RE = re.compile(r"/post/([A-Za-z0-9]+)")
 
 # Image types we know how to name. Bluesky's CDN almost always sends JPEG.
 EXT_FOR_TYPE = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}
+VIDEO_EXT_FOR_TYPE = {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
+
+# GIFs picked from Bluesky's GIF button come from Tenor. Bluesky doesn't
+# attach them as images: it stores a LINK to the .gif on Tenor's server.
+# Tripped me up: the first version only looked for attached images, so
+# every GIF from the picker was silently left out. Only this host is
+# trusted for GIF links, so a random link card can't make the script
+# download something from anywhere on the internet.
+GIF_HOSTS = {"media.tenor.com"}
+
+# Videos (and GIFs uploaded from a phone, which Bluesky turns into short
+# videos) are copied too, up to this size. GitHub refuses files over 100 MB
+# and big files slow the repo down, so anything bigger is left on Bluesky
+# and the entry keeps its "Bluesky" link to it.
+MAX_VIDEO_BYTES = 30 * 1024 * 1024
 
 
 # ─── Talking to Bluesky ────────────────────────────────────────────────────
@@ -242,14 +260,14 @@ def site_timezone(repo):
 
 
 def already_imported(entries_dir):
-    """Return the post IDs of every entry that came from Bluesky.
+    """Return {post ID: entry file} for every entry that came from Bluesky.
 
     We match on the post ID at the end of source_url, not the whole link.
     Why: the link contains your handle. If you ever change your handle, the
     same post gets a different link, and matching the full link would import
     everything a second time. The post ID never changes.
     """
-    ids = set()
+    ids = {}
     for f in entries_dir.glob("*.*"):
         if f.suffix not in (".txt", ".md"):
             continue
@@ -259,7 +277,7 @@ def already_imported(entries_dir):
             if line.startswith("source_url:"):
                 m = RKEY_IN_URL_RE.search(line)
                 if m:
-                    ids.add(m.group(1))
+                    ids[m.group(1)] = f
     return ids
 
 
@@ -276,48 +294,182 @@ def find_chapter(text):
     return int(start)
 
 
-def post_images(post):
-    """List the images attached to a post, as (full-size link, alt text).
+def post_media(post, did):
+    """List the pictures, GIFs and videos in a post, in order.
 
-    Images can sit in two places: a plain image post, or a post that quotes
-    another post AND has images ("recordWithMedia"). We check both.
-    Videos are not downloaded (they're big, and the site has no player);
-    we just mention them in the output so you know.
+    Each item is a dict: kind ("image" or "video"), url (where to download
+    it), alt (its description), and gif (True if it should play like a GIF:
+    on a silent loop).
+
+    Media can sit in three kinds of "embed" (Bluesky's word for what's
+    attached under a post):
+      - images: plain pictures, up to four.
+      - external: a link card. A GIF from the GIF button is one of these,
+        pointing at a .gif on Tenor (see GIF_HOSTS).
+      - video: an uploaded video, or an uploaded GIF that Bluesky turned
+        into a video. Bluesky only hands out a streaming playlist for these,
+        so we fetch the original file from your account's server instead
+        (see video_url).
+    A post that quotes another post AND has media wraps it in
+    "recordWithMedia", so we unwrap that first.
     """
     embed = post.get("embed") or {}
     kind = embed.get("$type", "")
     if kind == "app.bsky.embed.recordWithMedia#view":
         embed = embed.get("media") or {}
         kind = embed.get("$type", "")
+
     if kind == "app.bsky.embed.images#view":
-        return [(img["fullsize"], img.get("alt", "")) for img in embed.get("images", [])]
+        return [{"kind": "image", "url": img["fullsize"], "alt": img.get("alt", ""), "gif": False}
+                for img in embed.get("images", [])]
+
+    if kind == "app.bsky.embed.external#view":
+        ext = embed.get("external") or {}
+        uri = ext.get("uri", "")
+        parsed = urllib.parse.urlparse(uri)
+        if parsed.scheme == "https" and parsed.hostname in GIF_HOSTS and parsed.path.lower().endswith(".gif"):
+            # The GIF picker puts the search words in the title and a
+            # description in the description. The description reads better as alt text.
+            alt = ext.get("description") or ext.get("title") or ""
+            return [{"kind": "image", "url": uri, "alt": alt, "gif": True}]
+        return []  # an ordinary link card: nothing to copy
+
     if kind == "app.bsky.embed.video#view":
-        print(f"  Note: post {post['uri'].rsplit('/', 1)[-1]} has a video. Videos aren't copied; the entry links to the original post.")
+        cid = embed.get("cid")
+        if not cid:
+            return []
+        # "presentation: gif" is how Bluesky marks an uploaded GIF.
+        is_gif = embed.get("presentation") == "gif"
+        return [{"kind": "video", "url": video_url(did, cid), "alt": embed.get("alt", ""), "gif": is_gif}]
+
     return []
 
 
-def download_image(url, dest_stem):
-    """Save one image into the repo. Returns the saved file's path.
+_pds_cache = {}
 
-    Why download instead of linking: if a post is deleted, or Bluesky moves
-    its images, a hotlinked picture would break. A copy in the repo stays.
-    If the file is already there from an earlier run, we keep it and skip
-    the download.
+
+def video_url(did, cid):
+    """Where to download a video's original file.
+
+    Every Bluesky account lives on a "PDS" (personal data server). It keeps
+    the original file of everything you upload. We look up which server
+    yours is (from your DID document, the public record of your account)
+    and ask it for the file by its ID ("cid").
     """
-    for ext in EXT_FOR_TYPE.values():
+    if did not in _pds_cache:
+        if did.startswith("did:plc:"):
+            doc = http_get(f"https://plc.directory/{did}")
+        elif did.startswith("did:web:"):
+            doc = http_get(f"https://{did[len('did:web:'):]}/.well-known/did.json")
+        else:
+            raise SystemExit(f"Don't know how to look up the account server for {did}")
+        pds = next((s["serviceEndpoint"] for s in doc.get("service", []) if s.get("id", "").endswith("#atproto_pds")), None)
+        if not pds or not pds.startswith("https://"):
+            raise SystemExit(f"Couldn't find the account server for {did}")
+        _pds_cache[did] = pds.rstrip("/")
+    query = urllib.parse.urlencode({"did": did, "cid": cid})
+    return f"{_pds_cache[did]}/xrpc/com.atproto.sync.getBlob?{query}"
+
+
+def download_media(item, dest_stem):
+    """Save one picture, GIF or video into the repo. Returns the saved path, or None if it was skipped.
+
+    Why download instead of linking: if a post is deleted, or Bluesky or
+    Tenor move their files, a linked picture would break. A copy in the
+    repo stays. If the file is already there from an earlier run, we keep
+    it and skip the download.
+    """
+    types = VIDEO_EXT_FOR_TYPE if item["kind"] == "video" else EXT_FOR_TYPE
+    for ext in types.values():
         existing = dest_stem.with_suffix(ext)
         if existing.exists():
             return existing
-    body, ctype = http_get(url, want_json=False)
-    # Only save real images. If the server sends back anything else (an error
-    # page, say), we stop rather than save it into the site as a ".jpg".
-    ext = EXT_FOR_TYPE.get(ctype.split(";")[0].strip().lower())
+    body, ctype = http_get(item["url"], want_json=False)
+    ctype = ctype.split(";")[0].strip().lower()
+    # Account servers sometimes send videos as a generic "file" type, so for
+    # videos we also check the file's own first bytes: every MP4 has "ftyp" there.
+    if item["kind"] == "video" and ctype not in types and body[4:8] == b"ftyp":
+        ctype = "video/mp4"
+    # Only save real images/videos. If the server sends back anything else
+    # (an error page, say), we stop rather than save it under the wrong name.
+    ext = types.get(ctype)
     if not ext:
-        raise SystemExit(f"Expected an image but got '{ctype}' from {url}. Nothing was written for this post; run the import again later.")
+        raise SystemExit(f"Expected {item['kind']} but got '{ctype}' from {item['url']}. Nothing was written for this post; run the import again later.")
+    if item["kind"] == "video" and len(body) > MAX_VIDEO_BYTES:
+        print(f"  Note: a video in post {dest_stem.name} is {len(body) // (1024 * 1024)} MB, over the {MAX_VIDEO_BYTES // (1024 * 1024)} MB limit. It stays on Bluesky; the entry links to it.")
+        return None
     path = dest_stem.with_suffix(ext)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(body)
     return path
+
+
+def save_media(post, did, rkey, repo, dry_run):
+    """Download a post's media. Returns (images, videos) as lists of front-matter dicts.
+
+    Everything goes in assets/images/entries/, videos included, so the
+    site's media lives in one folder (and the workflows only add one).
+    Files are named <post ID>-<number>, so each post's files stay together.
+    """
+    images, videos = [], []
+    for i, item in enumerate(post_media(post, did), start=1):
+        dest = repo / "assets" / "images" / "entries" / f"{rkey}-{i}"
+        if dry_run:
+            src = f"/assets/images/entries/{rkey}-{i}" + (".mp4" if item["kind"] == "video" else ".gif" if item["gif"] else ".jpg")
+        else:
+            saved = download_media(item, dest)
+            if saved is None:
+                continue
+            src = "/" + saved.relative_to(repo).as_posix()
+        if item["kind"] == "video":
+            videos.append({"src": src, "alt": item["alt"], "gif": item["gif"]})
+        else:
+            images.append({"src": src, "alt": item["alt"]})
+    return images, videos
+
+
+def media_lines(images, videos):
+    """The front-matter lines that list a post's media."""
+    lines = []
+    if images:
+        lines.append("images:")
+        for m in images:
+            lines.append(f"  - src: {yaml_str(m['src'])}")
+            lines.append(f"    alt: {yaml_str(m['alt'])}")
+    if videos:
+        lines.append("videos:")
+        for m in videos:
+            lines.append(f"  - src: {yaml_str(m['src'])}")
+            lines.append(f"    alt: {yaml_str(m['alt'])}")
+            lines.append(f"    gif: {'true' if m['gif'] else 'false'}")
+    return lines
+
+
+def add_missing_media(post, did, path, repo, dry_run):
+    """Give an already-imported entry the media it was missing. Returns True if it changed.
+
+    Why: entries imported before GIFs and videos were supported have no
+    media listed. When a sync sees one of those posts again, it adds the
+    media. Only the front matter changes: the text is never touched, and an
+    entry that already lists any media is left completely alone.
+    """
+    text = path.read_text(encoding="utf-8")
+    if not text.startswith("---\n") or "\n---\n" not in text[4:]:
+        return False
+    fm, body = text[4:].split("\n---\n", 1)
+    if re.search(r"^(images|videos):", fm, re.MULTILINE):
+        return False
+    if not post_media(post, did):
+        return False
+    rkey = post["uri"].rsplit("/", 1)[-1]
+    images, videos = save_media(post, did, rkey, repo, dry_run)
+    if not images and not videos:
+        return False
+    new = "---\n" + fm + "\n" + "\n".join(media_lines(images, videos)) + "\n---\n" + body
+    if not dry_run:
+        path.write_text(new, encoding="utf-8")
+    print(f"  Added {len(images) + len(videos)} picture(s)/video(s) to existing entry {path.name}")
+    return True
 
 
 def yaml_str(s):
@@ -330,7 +482,7 @@ def yaml_str(s):
     return json.dumps(s, ensure_ascii=False)
 
 
-def write_entry(post, log_slug, handle, tz, repo, dry_run):
+def write_entry(post, log_slug, handle, did, tz, repo, dry_run):
     """Write one _entries/ file for one post. Returns a short summary dict."""
     record = post["record"]
     text = record.get("text", "")
@@ -363,14 +515,7 @@ def write_entry(post, log_slug, handle, tz, repo, dry_run):
         return None
     body = f"{RAW_OPEN}{text}{RAW_CLOSE}" if ("{{" in text or "{%" in text) else text
 
-    images = []
-    for i, (url, alt) in enumerate(post_images(post), start=1):
-        dest = repo / "assets" / "images" / "entries" / f"{rkey}-{i}"
-        if dry_run:
-            images.append((f"/assets/images/entries/{rkey}-{i}.jpg", alt))
-            continue
-        saved = download_image(url, dest)
-        images.append(("/" + saved.relative_to(repo).as_posix(), alt))
+    images, videos = save_media(post, did, rkey, repo, dry_run)
 
     # Build the file. Only the fields the site uses, in the same order the
     # /new page writes them, so both kinds of entry look the same.
@@ -381,11 +526,7 @@ def write_entry(post, log_slug, handle, tz, repo, dry_run):
         f"chapter: {'' if chapter is None else yaml_str(chapter) if isinstance(chapter, str) else chapter}".rstrip(),
         f"source_url: {source_url}",
     ]
-    if images:
-        lines.append("images:")
-        for src, alt in images:
-            lines.append(f"  - src: {yaml_str(src)}")
-            lines.append(f"    alt: {yaml_str(alt)}")
+    lines += media_lines(images, videos)
     lines.append("---")
     # The text goes in exactly as posted (only raw-wrapped when needed, see
     # above). One newline is added at the very end because files should end
@@ -395,7 +536,7 @@ def write_entry(post, log_slug, handle, tz, repo, dry_run):
     path = repo / "_entries" / f"{stem}.txt"
     if not dry_run:
         path.write_text(content, encoding="utf-8")
-    return {"file": path.name, "text": text, "chapter": chapter, "images": len(images), "time": created}
+    return {"file": path.name, "text": text, "chapter": chapter, "images": len(images) + len(videos), "time": created}
 
 
 # ─── Putting it together ───────────────────────────────────────────────────
@@ -440,20 +581,23 @@ def main(argv=None):
     tz = site_timezone(repo)
     entries_dir.mkdir(exist_ok=True)
 
-    written, skipped = [], 0
+    written, skipped, topped_up = [], 0, 0
     for post in posts:
-        if post["uri"].rsplit("/", 1)[-1] in done:
+        existing = done.get(post["uri"].rsplit("/", 1)[-1])
+        if existing:
             skipped += 1
+            if add_missing_media(post, did, existing, repo, args.dry_run):
+                topped_up += 1
             continue
-        result = write_entry(post, args.log_slug, handle, tz, repo, args.dry_run)
+        result = write_entry(post, args.log_slug, handle, did, tz, repo, args.dry_run)
         if result:
             written.append(result)
 
-    report(posts, written, skipped, args)
+    report(posts, written, skipped, args, topped_up)
     return 0
 
 
-def report(posts, written, skipped, args):
+def report(posts, written, skipped, args, topped_up=0):
     """Print what happened, and also put it on the GitHub Actions run page.
 
     GITHUB_STEP_SUMMARY is a file GitHub gives each run. Whatever we write
@@ -468,7 +612,8 @@ def report(posts, written, skipped, args):
         f"- {verb}: **{len(written)}**",
         f"- Already imported, skipped: **{skipped}**",
         f"- With a chapter detected: **{sum(1 for w in written if w['chapter'] is not None)}**",
-        f"- Images downloaded: **{sum(w['images'] for w in written)}**",
+        f"- Pictures, GIFs and videos downloaded: **{sum(w['images'] for w in written)}**",
+        f"- Older entries given their missing GIFs/pictures: **{topped_up}**",
     ]
     if written:
         first, last = written[0], written[-1]

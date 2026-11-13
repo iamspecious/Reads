@@ -87,8 +87,9 @@ class ContentTests(unittest.TestCase):
                                     "contains template code; it must be wrapped in raw markers")
                     inner = text[len(RAW_OPEN):-len(RAW_CLOSE)]
                     self.assertNotRegex(inner, r"\{%-?\s*endraw", "contains an endraw marker inside")
-                for img in re.findall(r'src:\s*"([^"]+)"', path.read_text(encoding="utf-8")):
-                    self.assertTrue((REPO / img.lstrip("/")).exists(), f"image {img} is missing from the repo")
+                # Every picture, GIF and video an entry lists must be in the repo.
+                for src in re.findall(r'src:\s*"([^"]+)"', path.read_text(encoding="utf-8")):
+                    self.assertTrue((REPO / src.lstrip("/")).exists(), f"media file {src} is missing from the repo")
 
     def test_no_template_code_in_template_comments(self):
         pattern = re.compile(r"\{%-?\s*comment\s*-?%\}(.*?)\{%-?\s*endcomment\s*-?%\}", re.S)

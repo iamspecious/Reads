@@ -78,7 +78,10 @@ jobs:
           count=$(git diff --cached --name-only --diff-filter=A -- _entries | wc -l)
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Sync ${count} new Bluesky post(s)"
+          # No new posts but something changed means older entries were given
+          # GIFs or pictures they were missing, so say that instead of "0 new".
+          if [ "$count" -gt 0 ]; then msg="Sync ${count} new Bluesky post(s)"; else msg="Add missing GIFs/pictures to Bluesky entries"; fi
+          git commit -m "$msg"
           for attempt in 1 2 3; do
             git pull --rebase --quiet origin "${GITHUB_REF_NAME}" && git push && echo "pushed=true" >> "$GITHUB_OUTPUT" && exit 0
             sleep $((attempt * 5))

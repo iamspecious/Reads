@@ -87,7 +87,21 @@ class ImportTests(unittest.TestCase):
         self.fake = FakeBluesky(self.chain, extra, depth=4)
         self._real_xrpc, self._real_get = imp.xrpc, imp.http_get
         imp.xrpc = self.fake.xrpc
-        imp.http_get = lambda url, want_json=True, tries=5: (b"\xff\xd8fakejpeg", "image/jpeg")
+        imp._pds_cache.clear()
+        self.downloads = []
+
+        def fake_get(url, want_json=True, tries=5):
+            # Pretend to be every server the importer talks to besides the API.
+            self.downloads.append(url)
+            if url.startswith("https://plc.directory/"):
+                return {"service": [{"id": "#atproto_pds", "serviceEndpoint": "https://pds.test"}]}
+            if url.startswith("https://media.tenor.com/"):
+                return b"GIF89afakegif", "image/gif"
+            if url.startswith("https://pds.test/xrpc/com.atproto.sync.getBlob"):
+                # Real servers often send videos as a generic file type.
+                return b"\x00\x00\x00\x18ftypmp42fakevideo", "application/octet-stream"
+            return b"\xff\xd8fakejpeg", "image/jpeg"
+        imp.http_get = fake_get
 
     def tearDown(self):
         imp.xrpc, imp.http_get = self._real_xrpc, self._real_get
@@ -167,6 +181,52 @@ class ImportTests(unittest.TestCase):
         self.run_import()
         f = next(f for f in self.entries() if f.stem.endswith("rk004"))
         self.assertIn('chapter: "7-9"\n', f.read_text())
+
+    def entry(self, rkey):
+        return next(f for f in self.entries() if f.stem.endswith(rkey)).read_text()
+
+    def test_gif_from_the_gif_button(self):
+        # A Tenor GIF arrives as a link card, not an image.
+        self.chain[5]["embed"] = {"$type": "app.bsky.embed.external#view", "external": {
+            "uri": "https://media.tenor.com/abc/nesta-eyeroll.gif?hh=200&ww=300",
+            "title": "nesta eyeroll", "description": "Alt: woman rolling her eyes"}}
+        self.run_import()
+        text = self.entry("rk005")
+        self.assertIn('  - src: "/assets/images/entries/rk005-1.gif"', text)
+        self.assertIn('    alt: "Alt: woman rolling her eyes"', text)
+        self.assertTrue((self.repo / "assets/images/entries/rk005-1.gif").exists())
+
+    def test_ordinary_link_cards_are_not_downloaded(self):
+        self.chain[5]["embed"] = {"$type": "app.bsky.embed.external#view", "external": {
+            "uri": "https://example.com/evil.gif", "title": "x", "description": ""}}
+        self.run_import()
+        self.assertNotIn("images:", self.entry("rk005"))
+        self.assertFalse(any("example.com" in u for u in self.downloads))
+
+    def test_uploaded_gif_becomes_a_looping_video(self):
+        self.chain[6]["embed"] = {"$type": "app.bsky.embed.video#view", "cid": "bafyvideo",
+                                  "presentation": "gif", "alt": "dancing"}
+        self.run_import()
+        text = self.entry("rk006")
+        self.assertIn('videos:\n  - src: "/assets/images/entries/rk006-1.mp4"\n    alt: "dancing"\n    gif: true', text)
+        self.assertIn("https://pds.test/xrpc/com.atproto.sync.getBlob?did=did%3Aplc%3Ame&cid=bafyvideo", self.downloads)
+
+    def test_older_entries_get_their_missing_gif(self):
+        self.run_import()
+        before = self.entry("rk007")
+        self.assertNotIn("images:", before)
+        # Same post, seen again by a later sync, now that GIFs are understood.
+        self.chain[7]["embed"] = {"$type": "app.bsky.embed.external#view", "external": {
+            "uri": "https://media.tenor.com/x/y.gif", "title": "t", "description": "d"}}
+        self.run_import()
+        after = self.entry("rk007")
+        self.assertIn('images:\n  - src: "/assets/images/entries/rk007-1.gif"', after)
+        # The text below the front matter is untouched.
+        self.assertEqual(before.split("\n---\n", 1)[1], after.split("\n---\n", 1)[1])
+        # And a third run changes nothing.
+        self.run_import()
+        self.assertEqual(self.entry("rk007"), after)
+        self.assertEqual(len(self.entries()), 15)
 
     def test_unknown_log_is_refused(self):
         with self.assertRaises(SystemExit):
