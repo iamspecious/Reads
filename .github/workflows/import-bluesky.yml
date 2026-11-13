@@ -93,7 +93,10 @@ jobs:
           count=$(git diff --cached --name-only --diff-filter=A -- _entries | wc -l)
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Import ${count} Bluesky post(s) into ${LOG_SLUG}"
+          # No new posts but something changed means older entries were given
+          # GIFs or pictures they were missing, so say that instead of "0".
+          if [ "$count" -gt 0 ]; then msg="Import ${count} Bluesky post(s) into ${LOG_SLUG}"; else msg="Add missing GIFs/pictures to ${LOG_SLUG} entries"; fi
+          git commit -m "$msg"
           # If someone posted while this ran, put our commit on top and retry.
           for attempt in 1 2 3; do
             git pull --rebase --quiet origin "${GITHUB_REF_NAME}" && git push && echo "pushed=true" >> "$GITHUB_OUTPUT" && exit 0

@@ -169,7 +169,7 @@ main { padding-bottom: 40px; }
 /* Long words and links are allowed to wrap, so they can't push the card wider than the phone. */
 .entry-text { color: var(--ink-soft); overflow-wrap: anywhere; }
 .entry-images { display: grid; gap: 8px; margin-top: 12px; }
-.entry-images img { width: 100%; height: auto; border-radius: 10px; display: block; background: var(--quiet-bg); }
+.entry-images img, .entry-images video { width: 100%; height: auto; border-radius: 10px; display: block; background: var(--quiet-bg); }
 .entry-source { display: inline-block; margin-top: 10px; font-size: 0.8rem; color: var(--muted); text-decoration: none; }
 .entry-source:hover { text-decoration: underline; }
 

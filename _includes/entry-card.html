@@ -67,6 +67,26 @@
     </div>
   {% endif %}
 
+  {% comment %}
+    Videos, and GIFs that Bluesky stored as short videos.
+    A GIF plays the way it does on Bluesky: by itself, on a loop, with no
+    sound. "muted" and "playsinline" are what let phones autoplay it inside
+    the page instead of jumping to full screen.
+    A real video gets play controls instead, and only loads its first frame
+    (preload="metadata") so it doesn't use mobile data until you press play.
+  {% endcomment %}
+  {% if e.videos %}
+    <div class="entry-images">
+      {% for v in e.videos %}
+        {% if v.gif %}
+          <video src="{{ v.src | relative_url }}" autoplay loop muted playsinline aria-label="{{ v.alt | default: 'GIF' | escape }}"></video>
+        {% else %}
+          <video src="{{ v.src | relative_url }}" controls preload="metadata" playsinline aria-label="{{ v.alt | default: 'Video' | escape }}"></video>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
   {% if e.source_url %}
     <a class="entry-source" href="{{ e.source_url }}" rel="noopener">Bluesky ↗</a>
   {% endif %}
