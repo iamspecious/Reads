@@ -99,13 +99,21 @@ RKEY_IN_URL_RE = re.compile(r"/post/([A-Za-z0-9]+)")
 EXT_FOR_TYPE = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}
 VIDEO_EXT_FOR_TYPE = {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
 
-# GIFs picked from Bluesky's GIF button come from Tenor. Bluesky doesn't
-# attach them as images: it stores a LINK to the .gif on Tenor's server.
-# Tripped me up: the first version only looked for attached images, so
-# every GIF from the picker was silently left out. Only this host is
-# trusted for GIF links, so a random link card can't make the script
-# download something from anywhere on the internet.
-GIF_HOSTS = {"media.tenor.com"}
+# GIFs picked from Bluesky's GIF button come from a GIF service. Bluesky
+# doesn't attach them as images: it stores a LINK to the .gif on that
+# service's server.
+# Tripped me up, twice: the first version only looked for attached images,
+# so every GIF from the picker was left out. The second only trusted Tenor,
+# but Bluesky's GIF button had moved to Klipy (static.klipy.com), so the GIFs
+# were still left out. Found by printing what Bluesky actually stored for
+# the posts. If GIFs stop appearing again, check the service hasn't changed.
+# Only these hosts are trusted for GIF links, so a random link card can't
+# make the script download something from anywhere on the internet.
+GIF_HOSTS = {"static.klipy.com", "media.tenor.com"}
+
+# A GIF bigger than this is left on Bluesky (the entry keeps its link to it),
+# so one huge GIF can't bloat the repo.
+MAX_GIF_BYTES = 15 * 1024 * 1024
 
 # Videos (and GIFs uploaded from a phone, which Bluesky turns into short
 # videos) are copied too, up to this size. GitHub refuses files over 100 MB
@@ -328,9 +336,11 @@ def post_media(post, did):
         uri = ext.get("uri", "")
         parsed = urllib.parse.urlparse(uri)
         if parsed.scheme == "https" and parsed.hostname in GIF_HOSTS and parsed.path.lower().endswith(".gif"):
-            # The GIF picker puts the search words in the title and a
-            # description in the description. The description reads better as alt text.
+            # The GIF picker writes a description like "ALT: Barbie's
+            # disgusted look". It's the best alt text there is; the "ALT:"
+            # label in front is dropped because screen readers don't need it.
             alt = ext.get("description") or ext.get("title") or ""
+            alt = re.sub(r"^\s*alt:\s*", "", alt, flags=re.IGNORECASE)
             return [{"kind": "image", "url": uri, "alt": alt, "gif": True}]
         return []  # an ordinary link card: nothing to copy
 
@@ -395,6 +405,9 @@ def download_media(item, dest_stem):
     ext = types.get(ctype)
     if not ext:
         raise SystemExit(f"Expected {item['kind']} but got '{ctype}' from {item['url']}. Nothing was written for this post; run the import again later.")
+    if item["gif"] and item["kind"] == "image" and len(body) > MAX_GIF_BYTES:
+        print(f"  Note: a GIF in post {dest_stem.name} is {len(body) // (1024 * 1024)} MB, over the {MAX_GIF_BYTES // (1024 * 1024)} MB limit. It stays on Bluesky; the entry links to it.")
+        return None
     if item["kind"] == "video" and len(body) > MAX_VIDEO_BYTES:
         print(f"  Note: a video in post {dest_stem.name} is {len(body) // (1024 * 1024)} MB, over the {MAX_VIDEO_BYTES // (1024 * 1024)} MB limit. It stays on Bluesky; the entry links to it.")
         return None

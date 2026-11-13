@@ -95,7 +95,7 @@ class ImportTests(unittest.TestCase):
             self.downloads.append(url)
             if url.startswith("https://plc.directory/"):
                 return {"service": [{"id": "#atproto_pds", "serviceEndpoint": "https://pds.test"}]}
-            if url.startswith("https://media.tenor.com/"):
+            if url.startswith(("https://media.tenor.com/", "https://static.klipy.com/")):
                 return b"GIF89afakegif", "image/gif"
             if url.startswith("https://pds.test/xrpc/com.atproto.sync.getBlob"):
                 # Real servers often send videos as a generic file type.
@@ -193,8 +193,19 @@ class ImportTests(unittest.TestCase):
         self.run_import()
         text = self.entry("rk005")
         self.assertIn('  - src: "/assets/images/entries/rk005-1.gif"', text)
-        self.assertIn('    alt: "Alt: woman rolling her eyes"', text)
+        self.assertIn('    alt: "woman rolling her eyes"', text)
         self.assertTrue((self.repo / "assets/images/entries/rk005-1.gif").exists())
+
+    def test_gif_from_klipy_like_the_real_thread(self):
+        # Copied from what Bluesky actually stored for the Chapter 33 post.
+        self.chain[5]["embed"] = {"$type": "app.bsky.embed.external#view", "external": {
+            "uri": "https://static.klipy.com/ii/935d7ab9d8c6202580a668421940ec81/b2/ae/377VY4PU.gif?hh=455&ww=498&mp4=2NCQAYdW&webm=6BxOUMBNXH6HuOD",
+            "title": "Barbie Doll's Surprised Disgusted Look",
+            "description": "ALT: Barbie Doll's Surprised Disgusted Look"}}
+        self.run_import()
+        text = self.entry("rk005")
+        self.assertIn('  - src: "/assets/images/entries/rk005-1.gif"', text)
+        self.assertIn('    alt: "Barbie Doll\'s Surprised Disgusted Look"', text)
 
     def test_ordinary_link_cards_are_not_downloaded(self):
         self.chain[5]["embed"] = {"$type": "app.bsky.embed.external#view", "external": {
