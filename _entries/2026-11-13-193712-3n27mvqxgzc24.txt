@@ -1,0 +1,11 @@
+---
+date: 2026-11-13 19:37:12 +0100
+log: a-court-of-silver-flames
+chapter: 42
+source_url: https://bsky.app/profile/booksbyspec.bsky.social/post/3n27mvqxgzc24
+videos:
+  - src: "/assets/images/entries/3n27mvqxgzc24-1.mp4"
+    alt: "Sauron's One Ring: 'One Ring to Rule Them All'"
+    gif: true
+---
+Chapter 42: Amren treating Nesta like Sauron forging the one ring is frankly hilarious
