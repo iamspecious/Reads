@@ -186,70 +186,70 @@ def fetch_thread(at_uri):
 
 # ─── Walking the thread ────────────────────────────────────────────────────
 
-def next_self_reply(node, my_did):
-    """Find the reply to this post that I wrote myself. Return None if there isn't one.
+def my_replies(node, my_did):
+    """The replies to this post that I wrote myself, earliest first.
 
     Replies can be real posts, or placeholders for deleted/blocked posts.
-    We only keep real posts (threadViewPost) whose author is me.
-
-    If I somehow replied to my own post twice (a fork in the thread), we
-    follow the EARLIEST reply. That's the most likely "next" post, and it
-    keeps the order stable every time the script runs. We say so in the
-    output so a fork is never skipped silently.
+    We only keep real posts (threadViewPost) whose author is me. Other
+    people's replies are skipped.
     """
     mine = [
         r for r in node.get("replies") or []
         if r.get("$type") == "app.bsky.feed.defs#threadViewPost"
         and r["post"]["author"]["did"] == my_did
     ]
-    if not mine:
-        return None
     mine.sort(key=lambda r: r["post"]["record"].get("createdAt", ""))
-    if len(mine) > 1:
-        skipped = ", ".join(r["post"]["uri"].rsplit("/", 1)[-1] for r in mine[1:])
-        print(f"  Note: you replied to yourself more than once here. Following the earliest; other branch(es) not followed: {skipped}")
-    return mine[0]
+    return mine
 
 
 def walk_thread(start_uri, my_did):
-    """Collect my posts in order, from the start post to the end of my chain.
+    """Collect every post of mine in the thread, oldest first.
 
-    "Fetch again" rule: when we reach a post with no self-reply in what
-    Bluesky sent back, that might be the real end, or it might be where
-    Bluesky stopped sending (the depth cut-off). We can't always tell, so
-    we simply ask again starting FROM that last post. If that fresh answer
-    still has no self-reply, it really is the end.
+    Every BRANCH is followed, not just one.
+    Tripped me up: the first version followed one chain and, when I'd
+    replied to the same post twice (easy to do by tapping reply on an older
+    post), it only took the earliest branch. All the newer posts were on
+    the other branch, so syncs kept "succeeding" while finding nothing new.
+    Now every reply of mine to a post of mine is collected, wherever it is,
+    and the whole lot is put in time order at the end.
+
+    "Fetch again" rule: when a post of mine has no replies of mine in what
+    Bluesky sent back, that might be the real end of a branch, or it might
+    be where Bluesky stopped sending (the depth cut-off). We can't always
+    tell, so we ask again starting FROM that post, once. If the fresh answer
+    still has no reply of mine under it, that branch really ends there.
     Tripped me up: a cut-off post looks almost the same as a real last post.
     The only hint is that "replies" is missing instead of an empty list, and
     that hint isn't reliable enough to trust alone.
     """
-    posts = []
-    seen = set()
-    node = fetch_thread(start_uri)
-    refetched_from = None
-    calls = 1
+    found = {}            # post address -> the post
+    refetched = set()     # posts we've already asked again from
+    to_fetch = [start_uri]
+    calls = 0
 
-    while True:
-        uri = node["post"]["uri"]
-        if uri not in seen:
-            posts.append(node["post"])
-            seen.add(uri)
-
-        child = next_self_reply(node, my_did)
-        if child is not None:
-            node = child
-            continue
-
-        if refetched_from == uri:
-            break  # we already asked again from here: this is the real end
-        print(f"  Reached post {len(posts)} with no more replies loaded. Fetching again from there to make sure…")
-        node = fetch_thread(uri)
-        refetched_from = uri
+    while to_fetch:
+        uri = to_fetch.pop()
+        root = fetch_thread(uri)
         calls += 1
         if calls > 500:
             # Safety net so a strange API answer can never loop forever.
             raise SystemExit("Stopped after 500 fetches. Something looks wrong with this thread.")
+        refetched.add(uri)
 
+        # Walk down every branch of my own replies in this answer.
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            found.setdefault(node["post"]["uri"], node["post"])
+            children = my_replies(node, my_did)
+            if children:
+                stack.extend(children)
+            elif node["post"]["uri"] not in refetched:
+                # A branch seems to end here. Ask again from this post to be sure.
+                refetched.add(node["post"]["uri"])
+                to_fetch.append(node["post"]["uri"])
+
+    posts = sorted(found.values(), key=lambda p: p["record"].get("createdAt", ""))
     print(f"  Walked the thread with {calls} API call(s).")
     return posts
 
