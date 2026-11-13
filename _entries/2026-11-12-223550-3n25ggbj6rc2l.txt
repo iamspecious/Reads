@@ -3,8 +3,5 @@ date: 2026-11-12 22:35:50 +0100
 log: a-court-of-silver-flames
 chapter: 32
 source_url: https://bsky.app/profile/booksbyspec.bsky.social/post/3n25ggbj6rc2l
-images:
-  - src: "/assets/images/entries/3n25ggbj6rc2l-1.gif"
-    alt: "Drew Scanlon Blinking Meme"
 ---
 Chapter 32: Excuse the fuck out of me? Someone/Something plucked *Az* from the sky?
