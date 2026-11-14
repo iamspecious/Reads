@@ -1,0 +1,11 @@
+---
+date: 2026-11-13 00:48:03 +0100
+log: a-court-of-silver-flames
+chapter: "34-37"
+source_url: https://bsky.app/profile/booksbyspec.bsky.social/post/3n25nso7bwk2v
+videos:
+  - src: "/assets/images/entries/3n25nso7bwk2v-1.mp4"
+    alt: "David Rose from Schitt's Creek"
+    gif: true
+---
+Chapter 34 - 37:

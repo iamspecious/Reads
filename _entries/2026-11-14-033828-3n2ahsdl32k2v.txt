@@ -1,0 +1,11 @@
+---
+date: 2026-11-14 03:38:28 +0100
+log: a-court-of-silver-flames
+chapter: 48
+source_url: https://bsky.app/profile/booksbyspec.bsky.social/post/3n2ahsdl32k2v
+videos:
+  - src: "/assets/images/entries/3n2ahsdl32k2v-1.mp4"
+    alt: "Ms. Pat: I Swear To God"
+    gif: true
+---
+Chapter 48: DONT FUCK ON SACRED GROUND CASS OR IN MOR’S HOUSE I SWEAR TO GOD
