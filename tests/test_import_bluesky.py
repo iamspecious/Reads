@@ -191,6 +191,10 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(imp.find_chapter("Chapter 7 – 9"), "7-9")
         self.assertEqual(imp.find_chapter("Chapter 12 - 3 favourite lines"), 12)
         self.assertIsNone(imp.find_chapter("much 12 nothing"))
+        self.assertEqual(imp.find_chapter("31: kiss of life I guess?"), 31)
+        self.assertEqual(imp.find_chapter("34-37: wow"), "34-37")
+        self.assertIsNone(imp.find_chapter("10 reasons Nesta is insufferable"))
+        self.assertIsNone(imp.find_chapter("It was 3:00 when I finished"))
         self.assertIsNone(imp.find_chapter("no chapter number here"))
 
     def test_file_contents(self):

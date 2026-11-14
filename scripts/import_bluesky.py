@@ -291,9 +291,17 @@ def already_imported(entries_dir):
 
 # ─── Making one entry ──────────────────────────────────────────────────────
 
+# A post that STARTS with a bare number and a colon, like "31: kiss of life",
+# is about that chapter too. Only at the very start and only with the colon
+# (or a dash) right after, so a post like "10 reasons Nesta…" doesn't count.
+# Tripped me up: "31: …" was the one chapter post left untagged, because the
+# first rule needed the word "Ch" or "Chapter".
+BARE_CHAPTER_RE = re.compile(r"^\s*(\d{1,3})\s*(?:[-–—]\s*(\d{1,3})\s*)?[:]")
+
+
 def find_chapter(text):
     """Return the chapter mentioned in the text: 12, or "7-9" for a range, or None."""
-    m = CHAPTER_RE.search(text)
+    m = CHAPTER_RE.search(text) or BARE_CHAPTER_RE.match(text)
     if not m:
         return None
     start, end = m.group(1), m.group(2)

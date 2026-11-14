@@ -1,7 +1,0 @@
----
-date: 2026-11-11 00:15:53 +0100
-log: a-court-of-silver-flames
-chapter: 11
-source_url: https://bsky.app/profile/booksbyspec.bsky.social/post/3mzyl3d5abc2h
----
-Chapter 11: Nesta is insufferable

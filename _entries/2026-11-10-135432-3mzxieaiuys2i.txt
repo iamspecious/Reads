@@ -1,7 +1,0 @@
----
-date: 2026-11-10 13:54:32 +0100
-log: a-court-of-silver-flames
-chapter:
-source_url: https://bsky.app/profile/booksbyspec.bsky.social/post/3mzxieaiuys2i
----
-My thoughts as I go through A Court of Silver Flames by Sarah J Mass

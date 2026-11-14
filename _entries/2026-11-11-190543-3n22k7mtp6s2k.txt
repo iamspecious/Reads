@@ -1,7 +1,0 @@
----
-date: 2026-11-11 19:05:43 +0100
-log: a-court-of-silver-flames
-chapter: 20
-source_url: https://bsky.app/profile/booksbyspec.bsky.social/post/3n22k7mtp6s2k
----
-Chapter 20: oooh plot
