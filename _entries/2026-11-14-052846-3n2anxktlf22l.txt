@@ -1,0 +1,11 @@
+---
+date: 2026-11-14 05:28:46 +0100
+log: a-court-of-silver-flames
+chapter: 51
+source_url: https://bsky.app/profile/booksbyspec.bsky.social/post/3n2anxktlf22l
+videos:
+  - src: "/assets/images/entries/3n2anxktlf22l-1.mp4"
+    alt: "Mulan: I'll Make a Man Out of You"
+    gif: true
+---
+Chapter 51: 🎶🎵Let’s get back to business to defeat the hun🎵🎶
